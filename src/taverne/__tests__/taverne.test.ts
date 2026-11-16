@@ -194,3 +194,66 @@ describe('taverne tiles', () => {
     expect(segmentDistance(-3, 4, 0, 0, 10, 0)).toBe(5);
   });
 });
+
+describe('taverne universal vtt', () => {
+  it('reads walls, doors and colours from a UVTT file', async () => {
+    const { parseUvtt, uvttColor, uvttBrightness, uvttWallPaths } = await import('../uvtt.js');
+    const file = parseUvtt(
+      JSON.stringify({
+        resolution: { map_origin: { x: 1, y: 1 }, map_size: { x: 10, y: 8 }, pixels_per_grid: 100 },
+        line_of_sight: [
+          [
+            { x: 1, y: 1 },
+            { x: 5, y: 1 },
+            { x: 5, y: 4 },
+          ],
+        ],
+        objects_line_of_sight: [
+          [
+            { x: 3, y: 3 },
+            { x: 4, y: 3 },
+          ],
+        ],
+        portals: [
+          {
+            bounds: [
+              { x: 2, y: 1 },
+              { x: 3, y: 1 },
+            ],
+            closed: false,
+          },
+        ],
+      }),
+    );
+    const paths = uvttWallPaths(file, { wall: 'cave', objects: 'invisible', door: 'door' });
+    expect(paths).toEqual([
+      {
+        points: [
+          [0, 0],
+          [4, 0],
+          [4, 3],
+        ],
+        preset: 'cave',
+      },
+      {
+        points: [
+          [2, 2],
+          [3, 2],
+        ],
+        preset: 'invisible',
+      },
+      {
+        points: [
+          [1, 0],
+          [2, 0],
+        ],
+        preset: 'door',
+        fields: { ds: 1 },
+      },
+    ]);
+    expect(uvttColor('ffeccd8b')).toBe('#eccd8b');
+    expect(uvttColor('ffffffff')).toBeUndefined();
+    expect(uvttBrightness('ff000000')).toBe(0);
+    expect(() => parseUvtt('{"foo":1}')).toThrow(/no resolution/);
+  });
+});

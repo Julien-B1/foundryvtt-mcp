@@ -20,6 +20,7 @@
 import {
   TAVERNE_BRIDGE_TOOLS,
   TAVERNE_LOCAL_TOOLS,
+  TAVERNE_SOCKET_BRIDGE_TOOLS,
   TAVERNE_SOCKET_READ_TOOLS,
   TAVERNE_WRITE_TOOLS,
 } from '../taverne/definitions.js';
@@ -141,7 +142,10 @@ const SOCKET_TOOLS = [
 const TOOL_DEPENDENCIES: ReadonlyMap<string, ToolDependency> = new Map<string, ToolDependency>([
   ...SOCKET_TOOLS.map((name): [string, ToolDependency] => [name, 'socket']),
   // Taverne batch and vision tools.
-  ...TAVERNE_WRITE_TOOLS.map((name): [string, ToolDependency] => [name, 'socket']),
+  ...TAVERNE_WRITE_TOOLS.map((name): [string, ToolDependency] => [
+    name,
+    TAVERNE_SOCKET_BRIDGE_TOOLS.includes(name) ? 'socket+bridge' : 'socket',
+  ]),
   ...TAVERNE_BRIDGE_TOOLS.map((name): [string, ToolDependency] => [name, 'bridge']),
   ...TAVERNE_SOCKET_READ_TOOLS.map((name): [string, ToolDependency] => [name, 'socket']),
   ...TAVERNE_LOCAL_TOOLS.map((name): [string, ToolDependency] => [name, 'local']),

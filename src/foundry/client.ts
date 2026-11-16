@@ -5348,6 +5348,11 @@ export class FoundryClient {
    * silently falling back to a guess — a wrong width/height would otherwise
    * misalign the grid or tile silently.
    */
+  /** Taverne: the FoundryVTT Data folder (FOUNDRY_DATA_PATH), when this server can read it. */
+  dataDir(): string | undefined {
+    return this.config.dataPath;
+  }
+
   /** Taverne: an asset's pixel size, read from disk (FOUNDRY_DATA_PATH). */
   imageSizeOf(relativeSrc: string): ImageSize {
     return this.requireImageSize(relativeSrc);

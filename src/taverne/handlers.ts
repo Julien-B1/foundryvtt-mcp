@@ -135,7 +135,7 @@ export function wallFields(preset: unknown, overrides: unknown): Record<string, 
 
 type PathPoint = [number, number] | [number, number, string];
 
-interface WallPath {
+export interface WallPath {
   points: PathPoint[];
   closed?: boolean;
   preset?: string;

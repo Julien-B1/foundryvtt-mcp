@@ -29,6 +29,7 @@ import {
 } from './snapshots.js';
 import { handlePlaceTiles } from './tiles.js';
 import { text } from './util.js';
+import { handleImportUvtt } from './uvtt.js';
 import { handleRenderScene, handleTraceWalls } from './vision.js';
 
 const WRITE = ' WRITE: one batched request; needs FOUNDRY_WRITE_ENABLED=true.';
@@ -361,6 +362,7 @@ export const taverneTools = [
 export const TAVERNE_WRITE_TOOLS = [
   'delete_documents',
   'place_tiles',
+  'import_uvtt',
   'restore_snapshot',
   'create_documents',
   'update_documents',
@@ -373,6 +375,8 @@ export const TAVERNE_WRITE_TOOLS = [
   'configure_scene',
 ];
 export const TAVERNE_BRIDGE_TOOLS = ['render_scene', 'trace_walls', 'render_document'];
+/** Writes that also need the companion module (an upload): they wait for it to connect. */
+export const TAVERNE_SOCKET_BRIDGE_TOOLS = ['import_uvtt'];
 /** Reads of the cached world (no write, no module). */
 export const TAVERNE_SOCKET_READ_TOOLS = ['list_encounters', 'create_snapshot'];
 /** Served from local files or constants. */
@@ -460,6 +464,8 @@ async function dispatch(
   session: HeadlessGmSession | null,
 ) {
   switch (name) {
+    case 'import_uvtt':
+      return handleImportUvtt(args, client, bridge);
     case 'place_tiles':
       return handlePlaceTiles(args, client);
     case 'render_document':

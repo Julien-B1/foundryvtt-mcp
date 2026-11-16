@@ -156,4 +156,42 @@ export const extraTools = [
       required: ['sceneId'],
     },
   },
+  {
+    name: 'import_uvtt',
+    description:
+      'Import a Universal VTT map (.dd2vtt from Dungeondraft, .uvtt from Arkenforge, DungeonFog, Dungeon Alchemist and most map generators): uploads its embedded image, creates the scene at its grid, and creates its exact walls, object outlines, doors and lights in one call — no tracing needed. Prefer it to trace_walls whenever the map comes with a UVTT export. With sceneId, adds the walls/lights to an existing scene instead (scaled to its size). Lights follow the house style by default (soft: wide, faded); lights: "file" keeps their radius, "none" skips them.' +
+      WRITE,
+    inputSchema: {
+      type: 'object',
+      properties: {
+        path: {
+          type: 'string',
+          description:
+            'The file, relative to (or inside) FOUNDRY_UPLOAD_SOURCE_DIR or the Foundry Data folder.',
+        },
+        content: { type: 'string', description: 'The file content (JSON text) instead of path.' },
+        name: { type: 'string', description: 'Scene name (default: the file name).' },
+        sceneId: { type: 'string', description: 'Existing scene to add the walls and lights to.' },
+        replace: { type: 'boolean', description: 'With sceneId: delete its walls first.' },
+        targetDir: {
+          type: 'string',
+          description: 'Where the image goes (default assets/maps/uvtt).',
+        },
+        gridDistance: { type: 'number', description: 'Distance per cell (default 1.5).' },
+        gridUnits: { type: 'string', description: 'Default m.' },
+        padding: { type: 'number' },
+        wallPreset: {
+          type: 'string',
+          description: 'Preset of the sight lines (default wall; cave for caverns).',
+        },
+        objectsPreset: {
+          type: 'string',
+          description:
+            'Preset of object outlines: pillars, rocks, furniture (default wall; invisible or terrain for low objects).',
+        },
+        doorPreset: { type: 'string', description: 'Default door.' },
+        lights: { type: 'string', enum: ['soft', 'file', 'none'] },
+      },
+    },
+  },
 ];
