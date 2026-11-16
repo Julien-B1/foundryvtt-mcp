@@ -1,3 +1,4 @@
+import { DRESSING_GUIDE } from './taverne/handlers.js';
 /**
  * @fileoverview The MCP stdio server facade shared by the all-in-one mode
  * and the relay.
@@ -39,6 +40,7 @@ export function createMcpServer(backend: McpBackend): Server {
       version: packageVersion(),
     },
     {
+      instructions: `FoundryVTT connector. Before preparing or dressing a scene, call list_scene_presets and follow its house style.\n\n${DRESSING_GUIDE}`,
       capabilities: {
         resources: {},
         tools: {},

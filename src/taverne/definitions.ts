@@ -38,7 +38,7 @@ export const taverneTools = [
   {
     name: 'list_scene_presets',
     description:
-      'List the wall presets (cave, door, doubleDoor, stoneDoor, portcullis, secretDoor, window, terrain, fence, invisible, ethereal, curtain, cliffLeft/Right…), the light presets (torch, campfire, crystal, arcane, runes, portal, fairy, bioluminescent, holy, ghostly, lava, neon, moonbeam, darkness…), every light animation, coloration technique, door sound and door animation of FoundryVTT 14. Call it before dressing a scene.',
+      'List the wall presets (cave, door, doubleDoor, stoneDoor, portcullis, secretDoor, window, terrain, fence, invisible, ethereal, curtain, cliffLeft/Right…), the light presets (torch, campfire, crystal, arcane, runes, portal, fairy, bioluminescent, holy, ghostly, lava, neon, moonbeam, darkness…), every light animation, coloration technique, door sound and door animation of FoundryVTT 14. Call it before dressing a scene: its first section is the house style to follow (wall detail level, towns left open, soft wide lights, no lit water).',
     inputSchema: { type: 'object', properties: {} },
   },
   {

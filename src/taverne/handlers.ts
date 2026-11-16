@@ -460,6 +460,21 @@ export async function handleClearSceneElements(
   return text(`🧹 **Removed** from ${scene.name}: ${lines.join(', ')}`);
 }
 
+/** House style for dressing a scene, returned by list_scene_presets so any AI client follows it. */
+export const DRESSING_GUIDE = `## How to dress a scene (house style)
+Walls
+- Draw walls like a GM would by hand: compact silhouettes, about 10-20 points per obstacle, segments of 1-2 grid cells. Ignore small spikes (crystal petals, roots tips); never pixel-perfect outlines.
+- Trace in separate layers with trace_walls: the cave/rock edge (mode dark + invert, open ~6, epsilon ~16), then bright formations (mode light, close ~10, epsilon ~16). Drop stray little loops (light streaks, logos, frames, docks).
+- Towns and villages: do NOT wall every building. Exteriors stay open; at most wall the edge of the map (forest edge as terrain) and the few interiors that will be played.
+- Translucent obstacles (crystal, ice, glass) use preset crystal: they must never cut light.
+Lights
+- Ambient lights are wide, soft and heavily faded: big dim radius, small bright core, attenuation ~0.95, alpha 0.25-0.35. Avoid a scatter of small light points.
+- A light inside an obstacle (rune on a stone, glow in a crystal) gets walls: false so its halo spreads.
+- Do not light open water or the sea; light the docks, the shore lanterns, not the water.
+- No large cone lights (moonbeam/sunbeam) over a whole map: they read as an ugly triangle. Keep cones short and inside rooms or under windows.
+- Negative (darkness) sources render as black discs: use them only for real magical darkness, not for shade under trees.
+- Check every result with render_scene (walls overlay for precision, effects only for mood) before calling it done.`;
+
 export function handleListScenePresets() {
   const walls = Object.entries(WALL_PRESETS)
     .map(([k, v]) => `- \`${k}\` — ${v.description}`)
@@ -468,7 +483,7 @@ export function handleListScenePresets() {
     .map(([k, v]) => `- \`${k}\` — ${v.description}`)
     .join('\n');
   return text(
-    `## Wall presets\n${walls}\n\n## Light presets\n${lights}\n\n` +
+    `${DRESSING_GUIDE}\n\n## Wall presets\n${walls}\n\n## Light presets\n${lights}\n\n` +
       `## Light animations\n${LIGHT_ANIMATIONS.join(', ')}\nDarkness (negative) animations: ${DARKNESS_ANIMATIONS.join(', ')}\n\n` +
       `## Coloration techniques\n${Object.keys(COLORATION).join(', ')}\n\n` +
       `## Door sounds\n${DOOR_SOUNDS.join(', ')}\nDoor animations: ${DOOR_ANIMATIONS.join(', ')}`,

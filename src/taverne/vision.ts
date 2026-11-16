@@ -6,8 +6,11 @@
  */
 
 import { randomBytes } from 'node:crypto';
+import fs from 'node:fs';
+import path from 'node:path';
 import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js';
 import type { ModuleBridge } from '../foundry/module-bridge.js';
+import { defaultStateDir } from '../shared/paths.js';
 import { isRecord } from '../utils/guards.js';
 
 const VISION_TIMEOUT_MS = 120_000;
@@ -17,17 +20,45 @@ export interface TracedPath {
   points: Array<[number, number]>;
 }
 
-const traces = new Map<string, { sceneId?: string | undefined; paths: TracedPath[]; at: number }>();
+/** Traces are written to <state dir>/traces/<id>.json and kept 30 days, so a restart loses nothing. */
+const TRACE_TTL_MS = 30 * 24 * 3600_000;
+const traceDir = () => path.join(defaultStateDir(), 'traces');
 
-export function getTrace(id: string): { sceneId?: string | undefined; paths: TracedPath[] } {
-  const t = traces.get(id);
-  if (!t) {
+interface StoredTrace {
+  sceneId?: string | undefined;
+  paths: TracedPath[];
+  at: number;
+  params?: Record<string, unknown>;
+}
+
+export function saveTrace(id: string, trace: StoredTrace): void {
+  const dir = traceDir();
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(path.join(dir, `${id}.json`), JSON.stringify(trace));
+  for (const f of fs.readdirSync(dir)) {
+    const file = path.join(dir, f);
+    try {
+      if (Date.now() - fs.statSync(file).mtimeMs > TRACE_TTL_MS) {
+        fs.rmSync(file);
+      }
+    } catch {
+      /* already gone */
+    }
+  }
+}
+
+export function getTrace(id: string): StoredTrace {
+  if (!/^[a-f0-9]{8}$/.test(id)) {
+    throw new McpError(ErrorCode.InvalidParams, `Invalid trace id "${id}"`);
+  }
+  try {
+    return JSON.parse(fs.readFileSync(path.join(traceDir(), `${id}.json`), 'utf8')) as StoredTrace;
+  } catch {
     throw new McpError(
       ErrorCode.InvalidParams,
-      `Unknown trace "${id}" (traces live in memory until the shared process restarts)`,
+      `Unknown trace "${id}" (traces are kept 30 days in the state directory)`,
     );
   }
-  return t;
 }
 
 function requireBridge(bridge: ModuleBridge | null): ModuleBridge {
@@ -78,16 +109,12 @@ export async function handleTraceWalls(args: Record<string, unknown>, bridge: Mo
   }
   const id = randomBytes(4).toString('hex');
   const paths = r.paths as TracedPath[];
-  traces.set(id, {
+  saveTrace(id, {
     sceneId: typeof args.sceneId === 'string' ? args.sceneId : undefined,
     paths,
     at: Date.now(),
+    params: args,
   });
-  for (const [k, v] of traces) {
-    if (Date.now() - v.at > 6 * 3600_000) {
-      traces.delete(k);
-    }
-  }
   const stats = r.stats as Record<string, unknown>;
   const lengths = paths.flatMap((p) =>
     p.points.slice(1).map((pt, i) => {

@@ -93,7 +93,7 @@ describe('taverne lights', () => {
     });
     expect(config).toMatchObject({
       dim: 12,
-      bright: 2.5,
+      bright: 2,
       color: '#ffb347',
       coloration: 3,
       darkness: { min: 0.5, max: 1 },
