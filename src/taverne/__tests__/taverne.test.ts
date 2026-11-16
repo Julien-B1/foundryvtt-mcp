@@ -276,3 +276,15 @@ describe('taverne image generation', () => {
     ).toEqual([{ b64: 'QUJD' }]);
   });
 });
+
+describe('addon versions', () => {
+  it('matches connector versions against an addon range', async () => {
+    const { satisfies } = await import('../../addons/registry.js');
+    expect(satisfies('3.0.0', '>=3.0.0')).toBe(true);
+    expect(satisfies('3.2.1', '^3.0.0')).toBe(true);
+    expect(satisfies('4.0.0', '^3.0.0')).toBe(false);
+    expect(satisfies('3.0.0', '3.x')).toBe(true);
+    expect(satisfies('3.0.0', '>=3.1.0 || 2.x')).toBe(false);
+    expect(satisfies('3.0.0', undefined)).toBe(true);
+  });
+});

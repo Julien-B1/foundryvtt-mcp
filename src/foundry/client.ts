@@ -5913,6 +5913,35 @@ export class FoundryClient {
   }
 
   /**
+   * Taverne (addons): creates, updates or deletes embedded documents of any parent
+   * (`Actor.<id>` items and effects, `JournalEntry.<id>` pages, `Scene.<id>` tokens…).
+   */
+  async modifyEmbedded(
+    parentUuid: string,
+    type: string,
+    action: 'create' | 'update' | 'delete',
+    payload: unknown[],
+    options: Record<string, unknown> = {},
+  ): Promise<unknown[]> {
+    this.assertWriteable();
+    if (!/^[A-Za-z]+\.[a-zA-Z0-9]{16}(\.[A-Za-z]+\.[a-zA-Z0-9]{16})*$/.test(parentUuid)) {
+      throw new Error(`Invalid parent uuid: ${parentUuid}`);
+    }
+    if (payload.length === 0) {
+      return [];
+    }
+    const key = action === 'create' ? 'data' : action === 'update' ? 'updates' : 'ids';
+    return this.modifyDocument(type, action, { ...options, [key]: payload, parentUuid });
+  }
+
+  /** Taverne (addons): the world's game system id, e.g. "dnd5e". */
+  worldSystemId(): string | undefined {
+    const s = this.worldData?.system as Record<string, unknown> | undefined;
+    const id = s?.id ?? (isRecord(s?.manifest) ? s.manifest.id : undefined);
+    return typeof id === 'string' ? id : undefined;
+  }
+
+  /**
    * Taverne: creates, updates or deletes many embedded documents of a scene in one
    * `modifyDocument` request (Wall, AmbientLight, AmbientSound, Tile, Drawing, Note,
    * Region, Token). `payload` is the data array (create), the updates array with
@@ -5973,6 +6002,7 @@ export class FoundryClient {
         Playlist: 'playlists',
         RollTable: 'tables',
         Cards: 'cards',
+        Setting: 'settings',
       } as Record<string, string>
     )[type];
     const data = this.worldData as unknown as Record<string, unknown> | null;

@@ -62,7 +62,13 @@ async function main(role: string | undefined): Promise<void> {
       runDaemonLauncher(ENTRY);
       break;
     }
+    case 'addons': {
+      const { runAddons } = await import('./cli/addons.js');
+      process.exit(await runAddons(process.argv.slice(3)));
+      break;
+    }
     case 'daemon': {
+      await (await import('./addons/registry.js')).loadAddons();
       const { runDaemon } = await import('./shared/daemon.js');
       await runDaemon();
       break;
@@ -71,6 +77,8 @@ async function main(role: string | undefined): Promise<void> {
       // Read without validating: with no usable configuration yet the relay
       // (or the all-in-one server) still starts and explains it on each call.
       const { resolveSettings } = await import('./config/sources.js');
+      // The relay lists the addons' tools; the shared process runs them.
+      await (await import('./addons/registry.js')).loadAddons();
       if (resolveSettings().values.FOUNDRY_MCP_SHARED !== 'false') {
         const { runRelay } = await import('./shared/relay.js');
         await runRelay(ENTRY);
@@ -82,7 +90,7 @@ async function main(role: string | undefined): Promise<void> {
     }
     default:
       process.stderr.write(
-        `Unknown command: ${role}\nUsage: foundryvtt-mcp [init [--check] | daemon | status | stop | --version]\n`,
+        `Unknown command: ${role}\nUsage: foundryvtt-mcp [init [--check] | addons [list|add|remove] | daemon | status | stop | --version]\n`,
       );
       process.exit(2);
   }

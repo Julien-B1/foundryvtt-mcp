@@ -18,6 +18,7 @@ import {
   ReadResourceRequestSchema,
   type ReadResourceResult,
 } from '@modelcontextprotocol/sdk/types.js';
+import { addonInstructions } from './addons/registry.js';
 import { tryGetConfig } from './config/index.js';
 import { packageVersion } from './shared/version.js';
 import { getAllTools } from './tools/definitions.js';
@@ -40,7 +41,12 @@ export function createMcpServer(backend: McpBackend): Server {
       version: packageVersion(),
     },
     {
-      instructions: `FoundryVTT connector. Before preparing or dressing a scene, call list_scene_presets and follow its house style.\n\n${DRESSING_GUIDE}`,
+      instructions: [
+        `FoundryVTT connector. Before preparing or dressing a scene, call list_scene_presets and follow its house style.\n\n${DRESSING_GUIDE}`,
+        addonInstructions(),
+      ]
+        .filter(Boolean)
+        .join('\n\n'),
       capabilities: {
         resources: {},
         tools: {},

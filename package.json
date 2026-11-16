@@ -123,5 +123,13 @@
     "src/**/*.{json,css,md}": [
       "biome format --write"
     ]
+  },
+  "exports": {
+    ".": "./dist/index.js",
+    "./addon": {
+      "types": "./dist/addons/types.d.ts",
+      "import": "./dist/addons/types.js"
+    },
+    "./package.json": "./package.json"
   }
 }

@@ -2,6 +2,7 @@
  * @fileoverview Taverne: MCP schemas of the batch scene tools and the vision tools.
  */
 
+import { handleListAddons } from '../addons/registry.js';
 import type { FoundryClient } from '../foundry/client.js';
 import type { HeadlessGmSession } from '../foundry/headless-gm-session.js';
 import type { ModuleBridge } from '../foundry/module-bridge.js';
@@ -391,7 +392,7 @@ export const TAVERNE_SOCKET_BRIDGE_TOOLS = ['import_uvtt', 'generate_image'];
 /** Reads of the cached world (no write, no module). */
 export const TAVERNE_SOCKET_READ_TOOLS = ['list_encounters', 'create_snapshot'];
 /** Served from local files or constants. */
-export const TAVERNE_LOCAL_TOOLS = ['list_scene_presets', 'list_snapshots'];
+export const TAVERNE_LOCAL_TOOLS = ['list_scene_presets', 'list_snapshots', 'list_addons'];
 const NAMES = new Set(taverneTools.map((t) => t.name));
 
 export function isTaverneTool(name: string): boolean {
@@ -475,6 +476,8 @@ async function dispatch(
   session: HeadlessGmSession | null,
 ) {
   switch (name) {
+    case 'list_addons':
+      return handleListAddons();
     case 'generate_image':
       return handleGenerateImage(args, client, bridge);
     case 'export_adventure':

@@ -1,3 +1,4 @@
+import { isAddonTool, routeAddonTool } from '../addons/registry.js';
 import { isTaverneTool, routeTaverneTool } from '../taverne/definitions.js';
 /**
  * Tool routing and handler coordination
@@ -182,6 +183,9 @@ export async function routeToolRequest(
 ): Promise<ToolResult> {
   logger.debug(`Routing tool request: ${name}`, { args });
 
+  if (isAddonTool(name)) {
+    return routeAddonTool(name, args, foundryClient, moduleBridge) as Promise<ToolResult>;
+  }
   if (isTaverneTool(name)) {
     return routeTaverneTool(
       name,

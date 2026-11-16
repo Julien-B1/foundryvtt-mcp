@@ -10,6 +10,7 @@
  * that mutate from a mixed group are listed by hand below.
  */
 
+import { isAddonWriteTool } from '../addons/registry.js';
 import { TAVERNE_WRITE_TOOLS } from '../taverne/definitions.js';
 
 export const WRITE_TOOLS: ReadonlySet<string> = new Set([
@@ -97,5 +98,5 @@ export const WRITE_TOOLS: ReadonlySet<string> = new Set([
 ]);
 
 export function isWriteTool(name: string): boolean {
-  return WRITE_TOOLS.has(name);
+  return WRITE_TOOLS.has(name) || isAddonWriteTool(name);
 }

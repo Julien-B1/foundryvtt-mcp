@@ -18,6 +18,12 @@ const UNITS = {
 
 export const extraTools = [
   {
+    name: 'list_addons',
+    description:
+      'List the loaded addons (system-, setting- or table-specific tool packs plugged into this connector: rules, character creation, encounter budgets, compendium imports…), their tools and any that failed to load.',
+    inputSchema: { type: 'object', properties: {} },
+  },
+  {
     name: 'delete_documents',
     description:
       'Delete documents in bulk: world documents (Actor, Item, JournalEntry, RollTable, Folder, Macro, Playlist, Scene, Cards, Combat) or, with sceneId, documents of a scene (Token, Wall, AmbientLight, AmbientSound, Tile, Drawing, Note, MeasuredTemplate, Region). Select by ids, by folder (recursive), by name (case-insensitive regular expression) or all: true. With a filter instead of ids, the first call only lists the matches: call again with confirm: true. A snapshot is taken first: restore_snapshot undoes the deletion, ids included.' +

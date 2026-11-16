@@ -17,6 +17,7 @@
  * A unit test checks that every tool and resource is classified.
  */
 
+import { addonToolDependency } from '../addons/registry.js';
 import {
   TAVERNE_BRIDGE_TOOLS,
   TAVERNE_LOCAL_TOOLS,
@@ -199,7 +200,7 @@ const RESOURCE_DEPENDENCIES: ReadonlyMap<string, ToolDependency> = new Map<strin
 
 /** The tool's dependency; `undefined` for a name nobody classified. */
 export function toolDependency(name: string): ToolDependency | undefined {
-  return TOOL_DEPENDENCIES.get(name);
+  return TOOL_DEPENDENCIES.get(name) ?? addonToolDependency(name);
 }
 
 /** The resource's dependency; `undefined` for a URI nobody classified. */

@@ -1,3 +1,4 @@
+import { addonToolDefinitions } from '../addons/registry.js';
 import { taverneTools } from '../taverne/definitions.js';
 
 /**
@@ -3374,6 +3375,7 @@ export const eventTools = [
 export function getAllTools() {
   return [
     ...taverneTools,
+    ...addonToolDefinitions(),
     ...diceTools,
     ...actorTools,
     ...actorMutationTools,
