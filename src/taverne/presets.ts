@@ -189,6 +189,11 @@ export const WALL_PRESETS: Record<string, { description: string; fields: WallFie
       threshold: { sight: 1.5, light: 1.5, attenuation: true },
     },
   },
+  crystal: {
+    description:
+      'Crystals, ice, glass formations: block movement, light passes freely (no shadows cut out of a glow), sight and sound only muffled.',
+    fields: { light: SENSE.none, sight: SENSE.limited, sound: SENSE.limited },
+  },
   terrain: {
     description:
       'Foliage, hedge, thick brush: blocks movement; sight/light/sound block on the second crossing.',

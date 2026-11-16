@@ -511,3 +511,73 @@ export async function handleConfigureScene(args: Record<string, unknown>, client
   await client.updateSceneDocument(sceneId, changes);
   return text(`🗺️ **Scene updated**: ${scene.name}\n${Object.keys(changes).join(', ')}`);
 }
+
+/* -------------------------------------------- */
+/*  Update walls                                */
+/* -------------------------------------------- */
+
+const WALL_FILTER_KEYS = ['move', 'sight', 'light', 'sound', 'dir', 'door'] as const;
+
+/**
+ * Re-dresses existing walls in one call: pick them by ids and/or by field values
+ * (e.g. {sight: 10}), and/or inside a rectangle (scene units), then apply a preset and/or fields.
+ */
+export async function handleUpdateWalls(args: Record<string, unknown>, client: FoundryClient) {
+  const sceneId = typeof args.sceneId === 'string' ? args.sceneId : fail('sceneId is required');
+  const scene = client.getSceneOrThrow(sceneId);
+  const frame = sceneFrame(scene);
+  const ids = Array.isArray(args.ids) ? new Set(args.ids as string[]) : null;
+  const where = isRecord(args.where) ? args.where : {};
+  for (const k of Object.keys(where)) {
+    if (!(WALL_FILTER_KEYS as readonly string[]).includes(k)) {
+      fail(`where.${k} is not a filter. Allowed: ${WALL_FILTER_KEYS.join(', ')}`);
+    }
+  }
+  const within = isRecord(args.within) ? (args.within as Record<string, number>) : null;
+  if (!ids && !Object.keys(where).length && !within) {
+    fail('Give ids, where and/or within to choose the walls');
+  }
+  const defaults: Record<string, number> = {
+    move: 20,
+    sight: 20,
+    light: 20,
+    sound: 20,
+    dir: 0,
+    door: 0,
+  };
+  const chosen = (scene.walls ?? []).filter((w) => {
+    if (typeof w._id !== 'string' || (ids && !ids.has(w._id))) {
+      return false;
+    }
+    for (const [k, v] of Object.entries(where)) {
+      if ((w[k] ?? defaults[k]) !== v) {
+        return false;
+      }
+    }
+    if (within) {
+      const c = (w.c as number[]) ?? [];
+      const inside = (x = 0, y = 0) =>
+        x - frame.sceneX >= (within.x ?? 0) &&
+        x - frame.sceneX <= (within.x ?? 0) + (within.width ?? 0) &&
+        y - frame.sceneY >= (within.y ?? 0) &&
+        y - frame.sceneY <= (within.y ?? 0) + (within.height ?? 0);
+      if (!inside(c[0], c[1]) || !inside(c[2], c[3])) {
+        return false;
+      }
+    }
+    return true;
+  });
+  const patch =
+    args.preset !== undefined
+      ? wallFields(args.preset, args.fields)
+      : wallFields('wall', args.fields);
+  if (args.preset !== undefined) {
+    // A preset sets every sense explicitly, so switching presets really switches.
+    for (const k of ['move', 'sight', 'light', 'sound', 'dir', 'door'] as const) {
+      patch[k] ??= defaults[k];
+    }
+  }
+  const updates = chosen.map((w) => ({ _id: w._id, ...patch }));
+  const updated = await client.modifySceneEmbedded(sceneId, 'Wall', 'update', updates);
+  return text(`🧱 **${updated.length} walls updated** on ${scene.name}: ${JSON.stringify(patch)}`);
+}

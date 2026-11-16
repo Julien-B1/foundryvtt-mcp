@@ -11,6 +11,7 @@ import {
   handleCreateWalls,
   handleListScenePresets,
   handleUpdateLights,
+  handleUpdateWalls,
 } from './handlers.js';
 import { handleRenderScene, handleTraceWalls } from './vision.js';
 
@@ -71,6 +72,24 @@ export const taverneTools = [
         fields: WALL_FIELDS,
         replace: { type: 'boolean', description: 'Delete every existing wall of the scene first.' },
         ...UNITS,
+      },
+      required: ['sceneId'],
+    },
+  },
+  {
+    name: 'update_walls',
+    description:
+      'Re-dress existing walls in one call: choose them by ids, by field values (where: {sight: 10, door: 0…}; unset fields count as Foundry defaults: 20 for senses/move, 0 for dir/door) and/or by a rectangle (within: {x, y, width, height} in scene px, both ends inside), then apply a preset (every sense reset to it) and/or raw fields. Example: make crystal formations let light through: {where: {sight: 10}, preset: "crystal"}.' +
+      WRITE,
+    inputSchema: {
+      type: 'object',
+      properties: {
+        sceneId: { type: 'string' },
+        ids: { type: 'array', items: { type: 'string' } },
+        where: { type: 'object' },
+        within: { type: 'object' },
+        preset: { type: 'string' },
+        fields: WALL_FIELDS,
       },
       required: ['sceneId'],
     },
@@ -221,6 +240,7 @@ export const taverneTools = [
 ];
 
 export const TAVERNE_WRITE_TOOLS = [
+  'update_walls',
   'create_walls',
   'create_lights',
   'update_lights',
@@ -245,6 +265,8 @@ export async function routeTaverneTool(
       return handleListScenePresets();
     case 'create_walls':
       return handleCreateWalls(args, client);
+    case 'update_walls':
+      return handleUpdateWalls(args, client);
     case 'create_lights':
       return handleCreateLights(args, client);
     case 'update_lights':

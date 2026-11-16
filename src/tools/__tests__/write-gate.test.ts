@@ -191,6 +191,7 @@ const ARGS: Record<string, Record<string, unknown>> = {
       },
     ],
   },
+  update_walls: { sceneId: SCENE, where: { sight: 10 }, preset: 'crystal' },
   create_lights: { sceneId: SCENE, lights: [{ x: 0, y: 0, preset: 'torch' }] },
   update_lights: { sceneId: SCENE, updates: [{ id: 'llllllllllllllll', config: { dim: 4 } }] },
   clear_scene_elements: { sceneId: SCENE, kinds: ['walls'] },
