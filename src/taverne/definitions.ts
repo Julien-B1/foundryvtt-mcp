@@ -19,6 +19,7 @@ import {
   handleUpdateLights,
   handleUpdateWalls,
 } from './handlers.js';
+import { handleGenerateImage } from './imagegen.js';
 import { handleDeleteDocuments, handleListEncounters } from './manage.js';
 import { handleRenderDocument } from './render-document.js';
 import {
@@ -366,6 +367,7 @@ export const TAVERNE_WRITE_TOOLS = [
   'import_uvtt',
   'export_adventure',
   'import_adventure',
+  'generate_image',
   'restore_snapshot',
   'create_documents',
   'update_documents',
@@ -385,7 +387,7 @@ export const TAVERNE_BRIDGE_TOOLS = [
   'import_adventure',
 ];
 /** Writes that also need the companion module (an upload): they wait for it to connect. */
-export const TAVERNE_SOCKET_BRIDGE_TOOLS = ['import_uvtt'];
+export const TAVERNE_SOCKET_BRIDGE_TOOLS = ['import_uvtt', 'generate_image'];
 /** Reads of the cached world (no write, no module). */
 export const TAVERNE_SOCKET_READ_TOOLS = ['list_encounters', 'create_snapshot'];
 /** Served from local files or constants. */
@@ -473,6 +475,8 @@ async function dispatch(
   session: HeadlessGmSession | null,
 ) {
   switch (name) {
+    case 'generate_image':
+      return handleGenerateImage(args, client, bridge);
     case 'export_adventure':
       return handleExportAdventure(args, bridge);
     case 'import_adventure':

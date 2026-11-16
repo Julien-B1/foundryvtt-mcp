@@ -238,4 +238,42 @@ export const extraTools = [
       },
     },
   },
+  {
+    name: 'generate_image',
+    description:
+      'Generate art with the configured image API (any OpenAI-compatible provider: OpenAI, OpenRouter, Gemini, xAI, Together, LocalAI, Stable Diffusion servers, a LiteLLM proxy…), upload it into Foundry and optionally apply it. kind picks a house prompt made for the table: token (top-down, transparent, centred — applied to the actor\'s prototype token), portrait (actor image), item (inventory icon), prop (top-down map asset, for place_tiles), map (top-down battlemap, then import or trace walls), scene (illustration, for journals), free (prompt used as is). prompt is only the subject ("a murloc oracle with a coral staff"); style adds a direction. Unavailable until FOUNDRY_IMAGE_API_URL is set.' +
+      WRITE,
+    inputSchema: {
+      type: 'object',
+      properties: {
+        prompt: { type: 'string', description: 'The subject to draw.' },
+        kind: {
+          type: 'string',
+          enum: ['token', 'portrait', 'item', 'prop', 'map', 'scene', 'free'],
+        },
+        style: {
+          type: 'string',
+          description:
+            'Art direction added to the house prompt (e.g. "World of Warcraft painterly style").',
+        },
+        raw: { type: 'boolean', description: 'Send prompt as is, without the house template.' },
+        size: {
+          type: 'string',
+          description:
+            'WIDTHxHEIGHT the provider accepts (default per kind, else FOUNDRY_IMAGE_SIZE).',
+        },
+        n: { type: 'number', description: 'Variants, 1-4 (default 1).' },
+        actorId: {
+          type: 'string',
+          description: 'Apply: token → prototype token, other kinds → actor image.',
+        },
+        alsoToken: { type: 'boolean', description: 'With a portrait: also use it as the token.' },
+        itemId: { type: 'string', description: 'Apply as the item image.' },
+        targetDir: { type: 'string', description: 'Default assets/generated/<kind folder>.' },
+        filename: { type: 'string' },
+        preview: { type: 'boolean', description: 'Return the image (default true).' },
+      },
+      required: ['prompt'],
+    },
+  },
 ];

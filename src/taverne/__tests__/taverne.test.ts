@@ -257,3 +257,22 @@ describe('taverne universal vtt', () => {
     expect(() => parseUvtt('{"foo":1}')).toThrow(/no resolution/);
   });
 });
+
+describe('taverne image generation', () => {
+  it('builds house prompts and reads both answer shapes', async () => {
+    const { buildPrompt, extractImages } = await import('../imagegen.js');
+    expect(buildPrompt('token', 'a murloc', 'WoW')).toMatch(
+      /^Top-down tabletop RPG token of a murloc\..* Style: WoW\.$/,
+    );
+    expect(() => buildPrompt('banner', 'x')).toThrow(/Unknown kind/);
+    expect(extractImages({ data: [{ b64_json: 'QUJD' }, { url: 'https://x/y.png' }] })).toEqual([
+      { b64: 'QUJD' },
+      { url: 'https://x/y.png' },
+    ]);
+    expect(
+      extractImages({
+        choices: [{ message: { images: [{ image_url: { url: 'data:image/png;base64,QUJD' } }] } }],
+      }),
+    ).toEqual([{ b64: 'QUJD' }]);
+  });
+});
