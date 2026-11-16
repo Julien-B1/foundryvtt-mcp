@@ -140,6 +140,77 @@ function marchingSquares(mask, w, h) {
   return loops;
 }
 
+
+/** Zhang-Suen thinning: reduces a 0/1 mask to a one-pixel skeleton (in place). */
+function thin(mask, w, h) {
+  const at = (x, y) => (x < 0 || y < 0 || x >= w || y >= h ? 0 : mask[y * w + x]);
+  let changed = true;
+  const del = [];
+  while (changed) {
+    changed = false;
+    for (let pass = 0; pass < 2; pass++) {
+      del.length = 0;
+      for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) {
+        if (!mask[y * w + x]) continue;
+        const p2 = at(x, y - 1), p3 = at(x + 1, y - 1), p4 = at(x + 1, y), p5 = at(x + 1, y + 1);
+        const p6 = at(x, y + 1), p7 = at(x - 1, y + 1), p8 = at(x - 1, y), p9 = at(x - 1, y - 1);
+        const b = p2 + p3 + p4 + p5 + p6 + p7 + p8 + p9;
+        if (b < 2 || b > 6) continue;
+        const seq = [p2, p3, p4, p5, p6, p7, p8, p9, p2];
+        let a = 0;
+        for (let i = 0; i < 8; i++) if (!seq[i] && seq[i + 1]) a++;
+        if (a !== 1) continue;
+        if (pass === 0 ? (p2 * p4 * p6 || p4 * p6 * p8) : (p2 * p4 * p8 || p2 * p6 * p8)) continue;
+        del.push(y * w + x);
+      }
+      for (const i of del) mask[i] = 0;
+      if (del.length) changed = true;
+    }
+  }
+  return mask;
+}
+
+/**
+ * Walks a skeleton into polylines by visiting pixels: start at end points (one neighbour), follow
+ * unvisited neighbours (straight ones first, so staircase diagonals do not split a wall), and start
+ * each branch from the visited pixel it leaves so the walls stay connected.
+ */
+function skeletonPaths(mask, w, h) {
+  const N4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+  const ND = [[1, 1], [1, -1], [-1, 1], [-1, -1]];
+  const inside = (x, y) => x >= 0 && y >= 0 && x < w && y < h;
+  const neighbours = (i, list) => {
+    const x = i % w, y = (i - x) / w, out = [];
+    for (const [dx, dy] of list) { const xx = x + dx, yy = y + dy; if (inside(xx, yy) && mask[yy * w + xx]) out.push(yy * w + xx); }
+    return out;
+  };
+  const all = (i) => [...neighbours(i, N4), ...neighbours(i, ND)];
+  const seen = new Uint8Array(mask.length);
+  const paths = [];
+  const walk = (start, from) => {
+    const pts = from === undefined ? [start] : [from, start];
+    seen[start] = 1;
+    let cur = start;
+    for (let guard = 0; guard < 1e6; guard++) {
+      const next = neighbours(cur, N4).find((q) => !seen[q]) ?? neighbours(cur, ND).find((q) => !seen[q]);
+      if (next === undefined) break;
+      seen[next] = 1; pts.push(next); cur = next;
+    }
+    return pts.map((i) => [i % w, Math.floor(i / w)]);
+  };
+  for (let i = 0; i < mask.length; i++) if (mask[i] && !seen[i] && all(i).length === 1) paths.push(walk(i));
+  // Branches and loops: start from an unvisited pixel next to a visited one, then anywhere left.
+  for (let pass = 0; pass < 2; pass++) {
+    for (let i = 0; i < mask.length; i++) {
+      if (!mask[i] || seen[i]) continue;
+      const from = all(i).find((q) => seen[q]);
+      if (pass === 0 && from === undefined) continue;
+      paths.push(walk(i, from));
+    }
+  }
+  return paths.filter((p) => p.length >= 2);
+}
+
 function rdp(points, eps) {
   if (points.length < 3) return points;
   const [ax, ay] = points[0], [bx, by] = points[points.length - 1];
@@ -273,13 +344,60 @@ export async function traceWalls(p = {}) {
   }
   if (p.invert) for (let i = 0; i < mask.length; i++) mask[i] = mask[i] ? 0 : 1;
 
-  // Contours.
+  // Contours, or centre lines of thick walls.
   const eps = (p.epsilon ?? 6) / sx;
-  const loops = marchingSquares(mask, w, h);
-  const onBorder = ([x, y]) => x <= 0.6 || y <= 0.6 || x >= w - 1.6 || y >= h - 1.6;
   const paths = [];
   let area = 0;
   for (let i = 0; i < mask.length; i++) area += mask[i];
+  let loops = [];
+  if (p.centerline) {
+    const skel = thin(Uint8Array.from(mask), w, h);
+    const minLen = (p.minLength ?? 20) / sx;
+    for (const run of skeletonPaths(skel, w, h)) {
+      const simple = rdp(run, eps);
+      const len = simple.slice(1).reduce((s2, q, i) => s2 + Math.hypot(q[0] - simple[i][0], q[1] - simple[i][1]), 0);
+      if (len >= minLen) paths.push({ closed: false, points: simple });
+    }
+    // Openings: pairs of free ends facing each other across a short gap.
+    if (p.bridge) {
+      const maxGap = p.bridge / sx, minGap = (p.minGap ?? 8) / sx;
+      const ends = [];
+      paths.forEach((path, pi) => {
+        const n = path.points.length;
+        ends.push({ pi, pt: path.points[0], dir: [path.points[0][0] - path.points[1][0], path.points[0][1] - path.points[1][1]] });
+        ends.push({ pi, pt: path.points[n - 1], dir: [path.points[n - 1][0] - path.points[n - 2][0], path.points[n - 1][1] - path.points[n - 2][1]] });
+      });
+      const taken = new Set();
+      const bridges = [];
+      for (let a = 0; a < ends.length; a++) {
+        if (taken.has(a)) continue;
+        let best = -1, bestD = Infinity;
+        for (let b = 0; b < ends.length; b++) {
+          if (b === a || taken.has(b) || ends[b].pi === ends[a].pi) continue;
+          const dx = ends[b].pt[0] - ends[a].pt[0], dy = ends[b].pt[1] - ends[a].pt[1];
+          const d = Math.hypot(dx, dy);
+          if (d < minGap || d > maxGap) continue;
+          // Both ends must point towards each other (the wall continues through the gap).
+          const da = Math.hypot(...ends[a].dir) || 1, db = Math.hypot(...ends[b].dir) || 1;
+          const ca = (ends[a].dir[0] * dx + ends[a].dir[1] * dy) / (da * d);
+          const cb = -(ends[b].dir[0] * dx + ends[b].dir[1] * dy) / (db * d);
+          if (ca < 0.8 || cb < 0.8) continue;
+          if (d < bestD) { bestD = d; best = b; }
+        }
+        if (best < 0) continue;
+        taken.add(a); taken.add(best);
+        const A2 = ends[a].pt, B2 = ends[best].pt;
+        const mx = Math.round((A2[0] + B2[0]) / 2), my = Math.round((A2[1] + B2[1]) / 2);
+        const i = (my * w + mx) * 3;
+        const r = rgb[i], g = rgb[i + 1], bl = rgb[i + 2];
+        const isWindow = bl > r + (p.windowBlue ?? 18) && bl > g;
+        bridges.push({ closed: false, points: [A2, B2], preset: isWindow ? (p.windowPreset ?? 'window') : (p.doorPreset ?? 'door') });
+      }
+      paths.push(...bridges);
+    }
+  } else {
+  loops = marchingSquares(mask, w, h);
+  const onBorder = ([x, y]) => x <= 0.6 || y <= 0.6 || x >= w - 1.6 || y >= h - 1.6;
   for (const loop of loops) {
     const skip = p.skipBorder !== false;
     if (!skip || !loop.some(onBorder)) {
@@ -287,7 +405,6 @@ export async function traceWalls(p = {}) {
       if (simple.length >= 3) paths.push({ closed: true, points: simple });
       continue;
     }
-    // Rotate so we start on a border point, then cut into runs that stay off the border.
     const start = loop.findIndex(onBorder);
     const rot = [...loop.slice(start), ...loop.slice(0, start)];
     let run = [];
@@ -297,9 +414,26 @@ export async function traceWalls(p = {}) {
     }
     if (run.length >= 2) paths.push({ closed: false, points: rdp(run, eps) });
   }
+  }
   const scenePaths = paths
-    .map((path) => ({ closed: path.closed, points: densify(path.points.map(([x, y]) => [Math.round(x * sx), Math.round(y * sy)]), p.maxSegment, path.closed) }))
+    .map((path) => ({ closed: path.closed, ...(path.preset ? { preset: path.preset } : {}), points: densify(path.points.map(([x, y]) => [Math.round(x * sx), Math.round(y * sy)]), p.maxSegment, path.closed) }))
     .filter((path) => path.points.length >= 2);
+  // Keep only what lies inside the given rectangles (scene px), splitting paths that leave them.
+  if (Array.isArray(p.within) && p.within.length) {
+    const inR = ([x, y]) => p.within.some((r) => x >= r.x && y >= r.y && x <= r.x + r.width && y <= r.y + r.height);
+    const kept = [];
+    for (const path of scenePaths) {
+      const pts = path.closed ? [...path.points, path.points[0]] : path.points;
+      let run = [];
+      for (const pt of pts) {
+        if (inR(pt)) run.push(pt);
+        else { if (run.length >= 2) kept.push({ ...path, closed: false, points: run }); run = []; }
+      }
+      if (run.length >= 2) kept.push({ ...path, closed: path.closed && run.length === pts.length, points: path.closed && run.length === pts.length ? path.points : run });
+    }
+    scenePaths.length = 0;
+    scenePaths.push(...kept);
+  }
 
   // Preview: image, tinted mask, traced paths, seeds.
   const pv = document.createElement('canvas'); pv.width = w; pv.height = h;
@@ -311,6 +445,7 @@ export async function traceWalls(p = {}) {
   g.lineWidth = Math.max(2, w / 500); g.strokeStyle = '#ff2d2d';
   let segments = 0;
   for (const path of scenePaths) {
+    g.strokeStyle = path.preset === 'door' || path.preset === (p.doorPreset ?? 'door') ? '#2dff5a' : path.preset ? '#2dc8ff' : '#ff2d2d';
     g.beginPath();
     path.points.forEach(([x, y], i) => (i ? g.lineTo(x / sx, y / sy) : g.moveTo(x / sx, y / sy)));
     if (path.closed) g.closePath();

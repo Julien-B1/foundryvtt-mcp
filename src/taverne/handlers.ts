@@ -596,3 +596,110 @@ export async function handleUpdateWalls(args: Record<string, unknown>, client: F
   const updated = await client.modifySceneEmbedded(sceneId, 'Wall', 'update', updates);
   return text(`🧱 **${updated.length} walls updated** on ${scene.name}: ${JSON.stringify(patch)}`);
 }
+
+/* -------------------------------------------- */
+/*  Generic documents                           */
+/* -------------------------------------------- */
+
+const WORLD_TYPES = new Set([
+  'Actor',
+  'Item',
+  'JournalEntry',
+  'RollTable',
+  'Folder',
+  'Macro',
+  'Playlist',
+  'Scene',
+  'Cards',
+]);
+const SCENE_TYPES = new Set([
+  'Token',
+  'Note',
+  'Tile',
+  'AmbientSound',
+  'Drawing',
+  'Region',
+  'MeasuredTemplate',
+]);
+
+/** The name and id of each created document, for the AI to chain calls (folders, journals, actors). */
+function idList(result: unknown[]): string {
+  return result
+    .map((r) =>
+      isRecord(r)
+        ? `- ${String(r.name ?? r.text ?? r.type ?? '?')}: ${String(r._id)}`
+        : `- ${String(r)}`,
+    )
+    .join('\n');
+}
+
+export async function handleCreateDocuments(args: Record<string, unknown>, client: FoundryClient) {
+  const type =
+    typeof args.type === 'string' && WORLD_TYPES.has(args.type)
+      ? args.type
+      : fail(`type must be one of ${[...WORLD_TYPES].join(', ')}`);
+  const data =
+    Array.isArray(args.data) && args.data.every(isRecord)
+      ? (args.data as Record<string, unknown>[])
+      : fail('data must be an array of document objects');
+  const created = await client.modifyWorldDocuments(type, 'create', data);
+  return text(`📄 **${created.length} ${type} created**\n${idList(created)}`);
+}
+
+export async function handleUpdateDocuments(args: Record<string, unknown>, client: FoundryClient) {
+  const type =
+    typeof args.type === 'string' && WORLD_TYPES.has(args.type)
+      ? args.type
+      : fail(`type must be one of ${[...WORLD_TYPES].join(', ')}`);
+  const updates =
+    Array.isArray(args.updates) &&
+    args.updates.every((u) => isRecord(u) && typeof u._id === 'string')
+      ? (args.updates as Record<string, unknown>[])
+      : fail('updates must be an array of objects with _id');
+  const updated = await client.modifyWorldDocuments(type, 'update', updates);
+  return text(`📝 **${updated.length} ${type} updated**\n${idList(updated)}`);
+}
+
+export async function handleCreateSceneDocuments(
+  args: Record<string, unknown>,
+  client: FoundryClient,
+) {
+  const sceneId = typeof args.sceneId === 'string' ? args.sceneId : fail('sceneId is required');
+  const type =
+    typeof args.type === 'string' && SCENE_TYPES.has(args.type)
+      ? args.type
+      : fail(`type must be one of ${[...SCENE_TYPES].join(', ')}`);
+  const scene = client.getSceneOrThrow(sceneId);
+  const toCanvas = converter(sceneFrame(scene), (args.units as Units) ?? 'scene', {
+    width: args.imageWidth as number | undefined,
+    height: args.imageHeight as number | undefined,
+  });
+  const data = (Array.isArray(args.data) ? args.data : fail('data must be an array')).map(
+    (d, i) => {
+      if (!isRecord(d)) fail(`data[${i}] must be an object`);
+      let out: Record<string, unknown> = { ...(d as Record<string, unknown>) };
+      // A Token starts from its actor's prototype token (image, name, disposition, link, vision,
+      // bars), as FoundryVTT's own drag and drop does; the given fields override it.
+      if (type === 'Token' && typeof out.actorId === 'string') {
+        const actor = client.getRawActor(out.actorId) ?? fail(`Actor not found: ${out.actorId}`);
+        const proto: Record<string, unknown> = isRecord(actor.prototypeToken)
+          ? { ...actor.prototypeToken }
+          : {};
+        for (const k of ['_id', 'randomImg', 'appendNumber', 'prependAdjective']) delete proto[k];
+        out = { ...proto, name: actor.name, ...out };
+      }
+      if (Number.isFinite(out.x) && Number.isFinite(out.y)) {
+        [out.x, out.y] = toCanvas(out.x as number, out.y as number);
+        // Tokens are placed by their top-left corner: centre them on the point given.
+        if (type === 'Token' && args.center !== false) {
+          const size = sceneFrame(scene).gridSize;
+          out.x = (out.x as number) - Math.round(((Number(out.width) || 1) * size) / 2);
+          out.y = (out.y as number) - Math.round(((Number(out.height) || 1) * size) / 2);
+        }
+      }
+      return out;
+    },
+  );
+  const created = await client.modifySceneEmbedded(sceneId, type, 'create', data);
+  return text(`📍 **${created.length} ${type} created** on ${scene.name}\n${idList(created)}`);
+}

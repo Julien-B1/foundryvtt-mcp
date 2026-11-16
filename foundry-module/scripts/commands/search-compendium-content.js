@@ -5,11 +5,12 @@
  */
 export async function searchCompendiumContent(params) {
   const query = (params?.query || '').toLowerCase();
-  const packType = params?.packType || 'JournalEntry';
+  // Taverne: no packType = every pack type (it used to default to JournalEntry only, hiding items and actors).
+  const packType = params?.packType || null;
   const limit = typeof params?.limit === 'number' ? params.limit : 20;
 
   const results = [];
-  const packs = game.packs.filter((p) => p.documentName === packType);
+  const packs = game.packs.filter((p) => !packType || p.documentName === packType);
 
   for (const pack of packs) {
     if (results.length >= limit) break;
@@ -32,7 +33,7 @@ export async function searchCompendiumContent(params) {
     }
 
     // For JournalEntry packs, also search text page content
-    if (packType === 'JournalEntry' && query) {
+    if (pack.documentName === 'JournalEntry' && query) {
       try {
         const docs = await pack.getDocuments();
         for (const doc of docs) {

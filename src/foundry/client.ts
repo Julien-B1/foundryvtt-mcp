@@ -5916,6 +5916,24 @@ export class FoundryClient {
     return this.modifyDocument(type, action, { [key]: payload, parentUuid: `Scene.${sceneId}` });
   }
 
+  /**
+   * Taverne: creates or updates many top-level world documents in one request (Actor with
+   * embedded items, Item, JournalEntry with pages, RollTable with results, Folder, Macro, Playlist…).
+   */
+  async modifyWorldDocuments(
+    type: string,
+    action: 'create' | 'update',
+    payload: unknown[],
+  ): Promise<unknown[]> {
+    this.assertWriteable();
+    if (payload.length === 0) return [];
+    return this.modifyDocument(
+      type,
+      action,
+      action === 'create' ? { data: payload } : { updates: payload },
+    );
+  }
+
   /** Taverne: updates the Scene document itself (validated by the caller). */
   async updateSceneDocument(sceneId: string, changes: Record<string, unknown>): Promise<unknown> {
     this.assertWriteable();

@@ -7,9 +7,12 @@ import type { ModuleBridge } from '../foundry/module-bridge.js';
 import {
   handleClearSceneElements,
   handleConfigureScene,
+  handleCreateDocuments,
   handleCreateLights,
+  handleCreateSceneDocuments,
   handleCreateWalls,
   handleListScenePresets,
+  handleUpdateDocuments,
   handleUpdateLights,
   handleUpdateWalls,
 } from './handlers.js';
@@ -74,6 +77,80 @@ export const taverneTools = [
         ...UNITS,
       },
       required: ['sceneId'],
+    },
+  },
+  {
+    name: 'create_documents',
+    description:
+      'Create many world documents of one type in ONE call, with every field FoundryVTT accepts: Actor (name, type, img, system, flags, folder, prototypeToken {texture.src, disposition, sight, light, bar1…}, items [embedded Item data]), Item, JournalEntry (pages [{name, type: text|image, text: {content: html}, src}]), RollTable (formula, results [{type, text|documentUuid, range, weight}]), Folder (type, color, folder = parent id), Macro, Playlist (sounds [{name, path, volume, repeat}]), Cards. Use get_document_schema for system fields. Returns the ids to chain calls (folder ids, journal ids for notes, actor ids for tokens).' +
+      WRITE,
+    inputSchema: {
+      type: 'object',
+      properties: {
+        type: {
+          type: 'string',
+          enum: [
+            'Actor',
+            'Item',
+            'JournalEntry',
+            'RollTable',
+            'Folder',
+            'Macro',
+            'Playlist',
+            'Scene',
+            'Cards',
+          ],
+        },
+        data: { type: 'array', items: { type: 'object' } },
+      },
+      required: ['type', 'data'],
+    },
+  },
+  {
+    name: 'update_documents',
+    description:
+      'Update many world documents of one type in ONE call: [{_id, …fields, dot paths allowed}] (e.g. ownership, flags, img, system.*).' +
+      WRITE,
+    inputSchema: {
+      type: 'object',
+      properties: {
+        type: {
+          type: 'string',
+          enum: [
+            'Actor',
+            'Item',
+            'JournalEntry',
+            'RollTable',
+            'Folder',
+            'Macro',
+            'Playlist',
+            'Scene',
+            'Cards',
+          ],
+        },
+        updates: { type: 'array', items: { type: 'object' } },
+      },
+      required: ['type', 'updates'],
+    },
+  },
+  {
+    name: 'create_scene_documents',
+    description:
+      'Create many embedded documents on a scene in ONE call, with every field: Token (actorId, x, y centred on the point, width, height, name, hidden, disposition -1 hostile/0 neutral/1 friendly, sight, light, actorLink…), Note (entryId, pageId, text, icon, iconSize, fontSize, global), Tile (texture.src, width, height), AmbientSound (path, radius, volume, walls, easing), Drawing, Region, MeasuredTemplate. x/y use units (default "scene" = pixels from the map top-left).' +
+      WRITE,
+    inputSchema: {
+      type: 'object',
+      properties: {
+        sceneId: { type: 'string' },
+        type: {
+          type: 'string',
+          enum: ['Token', 'Note', 'Tile', 'AmbientSound', 'Drawing', 'Region', 'MeasuredTemplate'],
+        },
+        data: { type: 'array', items: { type: 'object' } },
+        center: { type: 'boolean', description: 'Tokens: x/y is the centre (default true).' },
+        ...UNITS,
+      },
+      required: ['sceneId', 'type', 'data'],
     },
   },
   {
@@ -204,7 +281,7 @@ export const taverneTools = [
   {
     name: 'trace_walls',
     description:
-      'Vision: trace wall paths from the map image. mode "flood" fills from seed points (scene px) over pixels close in colour to the seed (tolerance 0-441, e.g. 30-60) — seed the walkable floor of a cave and its outline becomes the walls; "edge" grows while neighbours differ by less than tolerance (stops at drawn edges); "dark"/"light" thresholds luminance (black-walled dungeons: dark, threshold ~50-80); "colors" keeps pixels near the given hex colours. Cleanup: blur, close (fills cracks), open (removes specks), minArea, maxHole (fills small holes: pillars/rocks smaller than that disappear, set 0 to keep them as wall loops). epsilon = simplification in scene px (smaller = more, shorter, more precise segments; 4-8 for caves). Border runs are left open (map edge). Returns a preview and a trace id; then create_walls {fromTrace}. Iterate on the parameters until the preview hugs the edges.',
+      'Vision: trace wall paths from the map image. mode "flood" fills from seed points (scene px) over pixels close in colour to the seed (tolerance 0-441, e.g. 30-60) — seed the walkable floor of a cave and its outline becomes the walls; "edge" grows while neighbours differ by less than tolerance (stops at drawn edges); "dark"/"light" thresholds luminance (black-walled dungeons: dark, threshold ~50-80); "colors" keeps pixels near the given hex colours. Cleanup: blur, close (fills cracks), open (removes specks), minArea, maxHole (fills small holes: pillars/rocks smaller than that disappear, set 0 to keep them as wall loops). epsilon = simplification in scene px (smaller = more, shorter, more precise segments; 4-8 for caves). Border runs are left open (map edge). For interiors with thick walls use centerline + bridge: doors and windows come out as their own paths. Returns a preview and a trace id; then create_walls {fromTrace}. Iterate on the parameters until the preview hugs the edges.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -232,6 +309,32 @@ export const taverneTools = [
         maxSegment: { type: 'number', description: 'Split longer segments (scene px).' },
         skipBorder: { type: 'boolean' },
         invert: { type: 'boolean' },
+        centerline: {
+          type: 'boolean',
+          description:
+            'Interiors with thick drawn walls: thin the wall mask to its centre line (one wall per drawn wall, not two faces). Use with mode colors/dark on the wall colour.',
+        },
+        bridge: {
+          type: 'number',
+          description:
+            'With centerline: close gaps up to this length (scene px, e.g. 1.5 grid cells) between wall ends facing each other; each gap becomes a door, or a window when its middle pixel is bluish. Check them on render_scene.',
+        },
+        minGap: { type: 'number', description: 'Smallest gap bridged (scene px, default 8).' },
+        within: {
+          type: 'array',
+          items: { type: 'object' },
+          description:
+            'Keep only walls inside these rectangles [{x, y, width, height}] in scene px (drop map frames, shadows, titles, insets).',
+        },
+        minLength: {
+          type: 'number',
+          description: 'With centerline: drop wall runs shorter than this (scene px, default 20).',
+        },
+        doorPreset: { type: 'string', description: 'Preset for bridged doors (default door).' },
+        windowPreset: {
+          type: 'string',
+          description: 'Preset for bridged windows (default window).',
+        },
         returnPoints: { type: 'boolean', description: 'Also return the paths as JSON (large).' },
       },
       required: ['sceneId'],
@@ -240,6 +343,9 @@ export const taverneTools = [
 ];
 
 export const TAVERNE_WRITE_TOOLS = [
+  'create_documents',
+  'update_documents',
+  'create_scene_documents',
   'update_walls',
   'create_walls',
   'create_lights',
@@ -265,6 +371,12 @@ export async function routeTaverneTool(
       return handleListScenePresets();
     case 'create_walls':
       return handleCreateWalls(args, client);
+    case 'create_documents':
+      return handleCreateDocuments(args, client);
+    case 'update_documents':
+      return handleUpdateDocuments(args, client);
+    case 'create_scene_documents':
+      return handleCreateSceneDocuments(args, client);
     case 'update_walls':
       return handleUpdateWalls(args, client);
     case 'create_lights':

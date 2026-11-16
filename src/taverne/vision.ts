@@ -17,6 +17,7 @@ const VISION_TIMEOUT_MS = 120_000;
 
 export interface TracedPath {
   closed: boolean;
+  preset?: string;
   points: Array<[number, number]>;
 }
 
