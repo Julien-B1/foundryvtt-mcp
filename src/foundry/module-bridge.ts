@@ -89,6 +89,8 @@ export const COMMAND_SINCE: Readonly<Record<string, string>> = {
   toggle_status_effect: '0.6.0',
   render_scene: '0.6.1',
   trace_walls: '0.6.1',
+  export_adventure: '0.6.2',
+  import_adventure: '0.6.2',
 };
 
 /**

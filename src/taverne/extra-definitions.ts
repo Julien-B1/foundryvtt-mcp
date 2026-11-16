@@ -194,4 +194,48 @@ export const extraTools = [
       },
     },
   },
+  {
+    name: 'export_adventure',
+    description:
+      'Pack a campaign into an Adventure of a world compendium, to keep or share it: folders (recursively, with everything inside) and/or documents by type, plus the encounters prepared on the exported scenes. Ids, folders, @UUID links and token links are kept. Exporting again under the same name updates it.' +
+      WRITE,
+    inputSchema: {
+      type: 'object',
+      properties: {
+        name: { type: 'string' },
+        folders: { type: 'array', items: { type: 'string' }, description: 'Folder ids.' },
+        documents: {
+          type: 'object',
+          description:
+            '{"Scene": [ids], "Actor": [ids], …} (Actor, Item, JournalEntry, Scene, RollTable, Macro, Playlist, Cards, Combat)',
+        },
+        packLabel: {
+          type: 'string',
+          description: 'Compendium label (default "Aventures", created when missing).',
+        },
+        packName: { type: 'string' },
+        img: { type: 'string' },
+        caption: { type: 'string' },
+        description: { type: 'string', description: 'HTML shown by the adventure importer.' },
+        includeCombats: { type: 'boolean', description: 'Default true.' },
+        replace: {
+          type: 'boolean',
+          description: 'Update an adventure of the same name (default true).',
+        },
+      },
+      required: ['name'],
+    },
+  },
+  {
+    name: 'import_adventure',
+    description: `Import an Adventure from a compendium into the world (documents keep their ids; existing ones are updated). Without id or name, lists the adventures available.${WRITE}`,
+    inputSchema: {
+      type: 'object',
+      properties: {
+        pack: { type: 'string', description: 'Compendium id, e.g. world.aventures.' },
+        id: { type: 'string' },
+        name: { type: 'string' },
+      },
+    },
+  },
 ];

@@ -5,6 +5,7 @@
 import type { FoundryClient } from '../foundry/client.js';
 import type { HeadlessGmSession } from '../foundry/headless-gm-session.js';
 import type { ModuleBridge } from '../foundry/module-bridge.js';
+import { handleExportAdventure, handleImportAdventure } from './adventure.js';
 import { extraTools } from './extra-definitions.js';
 import {
   handleClearSceneElements,
@@ -363,6 +364,8 @@ export const TAVERNE_WRITE_TOOLS = [
   'delete_documents',
   'place_tiles',
   'import_uvtt',
+  'export_adventure',
+  'import_adventure',
   'restore_snapshot',
   'create_documents',
   'update_documents',
@@ -374,7 +377,13 @@ export const TAVERNE_WRITE_TOOLS = [
   'clear_scene_elements',
   'configure_scene',
 ];
-export const TAVERNE_BRIDGE_TOOLS = ['render_scene', 'trace_walls', 'render_document'];
+export const TAVERNE_BRIDGE_TOOLS = [
+  'render_scene',
+  'trace_walls',
+  'render_document',
+  'export_adventure',
+  'import_adventure',
+];
 /** Writes that also need the companion module (an upload): they wait for it to connect. */
 export const TAVERNE_SOCKET_BRIDGE_TOOLS = ['import_uvtt'];
 /** Reads of the cached world (no write, no module). */
@@ -464,6 +473,10 @@ async function dispatch(
   session: HeadlessGmSession | null,
 ) {
   switch (name) {
+    case 'export_adventure':
+      return handleExportAdventure(args, bridge);
+    case 'import_adventure':
+      return handleImportAdventure(args, bridge);
     case 'import_uvtt':
       return handleImportUvtt(args, client, bridge);
     case 'place_tiles':

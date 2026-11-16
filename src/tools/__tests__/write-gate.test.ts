@@ -194,6 +194,8 @@ const ARGS: Record<string, Record<string, unknown>> = {
   create_documents: { type: 'Item', data: [{ name: 'Rope', type: 'item' }] },
   delete_documents: { type: 'Item', ids: ['aaaaaaaaaaaaaaaa'] },
   import_uvtt: { content: '{}' },
+  export_adventure: { name: 'A', folders: ['aaaaaaaaaaaaaaaa'] },
+  import_adventure: { pack: 'world.a', name: 'A' },
   place_tiles: { sceneId: 'aaaaaaaaaaaaaaaa', tiles: [{ src: 'a.png', x: 1, y: 1 }] },
   restore_snapshot: { id: '20260101-000000-abcd' },
   update_documents: { type: 'Actor', updates: [{ _id: ACTOR, name: 'Renamed' }] },
