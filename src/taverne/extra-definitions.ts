@@ -244,42 +244,4 @@ export const extraTools = [
       },
     },
   },
-  {
-    name: 'generate_image',
-    description:
-      "Generate art with the image API configured for this world (an OpenAI-compatible /images/generations endpoint: the table's ComfyUI proxy, OpenAI, LocalAI…; address, port and model in Foundry's game settings), upload it into Foundry and optionally apply it. kind picks a house prompt made for the table: token (top-down, transparent, centred — applied to the actor's prototype token), portrait (actor image), item (inventory icon), prop (top-down map asset, for place_tiles), map (top-down battlemap, then import or trace walls), scene (illustration, for journals), free (prompt used as is). prompt is only the subject (\"a murloc oracle with a coral staff\"); style adds a direction. Unavailable until an address is set (game settings) or FOUNDRY_IMAGE_API_URL." +
-      WRITE,
-    inputSchema: {
-      type: 'object',
-      properties: {
-        prompt: { type: 'string', description: 'The subject to draw.' },
-        kind: {
-          type: 'string',
-          enum: ['token', 'portrait', 'item', 'prop', 'map', 'scene', 'free'],
-        },
-        style: {
-          type: 'string',
-          description:
-            'Art direction added to the house prompt (e.g. "World of Warcraft painterly style").',
-        },
-        raw: { type: 'boolean', description: 'Send prompt as is, without the house template.' },
-        size: {
-          type: 'string',
-          description:
-            'WIDTHxHEIGHT the provider accepts (default per kind, else FOUNDRY_IMAGE_SIZE).',
-        },
-        n: { type: 'number', description: 'Variants, 1-4 (default 1).' },
-        actorId: {
-          type: 'string',
-          description: 'Apply: token → prototype token, other kinds → actor image.',
-        },
-        alsoToken: { type: 'boolean', description: 'With a portrait: also use it as the token.' },
-        itemId: { type: 'string', description: 'Apply as the item image.' },
-        targetDir: { type: 'string', description: 'Default assets/generated/<kind folder>.' },
-        filename: { type: 'string' },
-        preview: { type: 'boolean', description: 'Return the image (default true).' },
-      },
-      required: ['prompt'],
-    },
-  },
 ];

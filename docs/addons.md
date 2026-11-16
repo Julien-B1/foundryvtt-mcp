@@ -21,7 +21,11 @@ An addon is installed **with** the connector, never alone: it declares `foundryv
 peer dependency and the connector versions it supports (`requires`), checked at load. A broken
 or incompatible addon is reported and skipped; the connector keeps running.
 
-Addon settings are `FOUNDRY_ADDON_<NAME>_<KEY>` in the environment or the configuration file.
+Addon settings are `FOUNDRY_ADDON_<NAME>_<KEY>` in the environment or the configuration file
+(secrets such as API keys go there). Settings the GM changes **per world** are declared by the
+addon (`worldSettings`): the connector publishes them, and the companion module (0.6.4+) shows
+them in *Game Settings → FoundryVTT MCP Bridge* after the GM's page is reloaded. World settings
+reach every player's browser: never put a secret in one.
 
 ## Writing an addon
 
@@ -46,6 +50,9 @@ export default {
   requires: '>=3.0.0',              // connector versions
   systems: ['mysystem'],            // its tools refuse worlds of other systems
   instructions: 'In a MySystem world, call mysystem_rules first…',  // appended to the MCP instructions
+  worldSettings: [                  // edited by the GM in Foundry, read with ctx.worldSetting('server')
+    { key: 'server', name: 'Rules server', hint: '…', type: 'string', default: '' },
+  ],
   tools: [
     {
       name: 'mysystem_rules',
@@ -81,8 +88,10 @@ The handler's `ctx`:
 | `ctx.documents.createEmbedded/updateEmbedded/deleteEmbedded(parentUuid, type, …)` | items and effects of `Actor.<id>`, pages of `JournalEntry.<id>`, documents of `Scene.<id>` |
 | `ctx.snapshot(label, {Actor: [ids]})` | saves documents first; `restore_snapshot` undoes |
 | `ctx.bridge.send(command, params)` | companion module commands (`search_compendium_content`, `get_compendium_document`, …) |
-| `ctx.setting(key)` | `FOUNDRY_ADDON_<NAME>_<KEY>` |
+| `ctx.setting(key)` | `FOUNDRY_ADDON_<NAME>_<KEY>` (connector configuration) |
+| `ctx.worldSetting(key)` | one of the addon's `worldSettings`, as set in this world (else its default) |
 | `ctx.text(t)`, `ctx.fail(message)` | a text result; an invalid-params error the AI can act on |
 
-Example: [foundryvtt-mcp-debilus](https://github.com/Julien-B1/foundryvtt-mcp-debilus) — rules,
+Examples: foundryvtt-mcp-images (image generation: kinds, MOSS-Image prompt rules, per-world
+server address) and [foundryvtt-mcp-debilus](https://github.com/Julien-B1/foundryvtt-mcp-debilus) — rules,
 characters and NPCs by the rules, sheet checks, encounter weight, compendium imports.

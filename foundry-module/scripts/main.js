@@ -40,6 +40,30 @@ const COMMANDS = {
 /** @type {BridgeTransport | null} */
 let transport = null;
 
+/** Registers the addon world settings published by the connector (read from the world data). */
+function registerAddonSettings() {
+  let decls = [];
+  try {
+    const raw = game.data?.settings?.find((x) => x.key === `${MODULE_ID}.addonSettings`)?.value;
+    decls = raw ? JSON.parse(raw) : [];
+  } catch (error) {
+    console.warn('FoundryVTT MCP Bridge | unreadable addon settings', error);
+  }
+  const types = { string: String, number: Number, boolean: Boolean };
+  for (const d of Array.isArray(decls) ? decls : []) {
+    if (!d?.addon || !/^[A-Za-z0-9]+$/.test(d.key ?? '') || !types[d.type]) continue;
+    game.settings.register(MODULE_ID, `${String(d.addon).replace(/-/g, '_')}_${d.key}`, {
+      name: `${d.name} (${d.addon})`,
+      hint: d.hint ?? '',
+      scope: 'world',
+      config: true,
+      restricted: true,
+      type: types[d.type],
+      default: d.default,
+    });
+  }
+}
+
 Hooks.once('init', () => {
   game.settings.register(MODULE_ID, 'bridgePort', {
     name: 'MCP Bridge Port',
@@ -49,36 +73,17 @@ Hooks.once('init', () => {
     type: Number,
     default: 31415,
   });
-  // Taverne: where generate_image sends its requests — an OpenAI-compatible image API
-  // (e.g. an OpenAI-compatible proxy in front of ComfyUI). Read by the connector, which
-  // keeps the API key in its own configuration: world settings reach every player.
-  game.settings.register(MODULE_ID, 'imageApiHost', {
-    name: 'Image generation: address',
-    hint: 'Address of the OpenAI-compatible image API used by the MCP connector (generate_image), as the connector reaches it: e.g. 192.168.1.50, comfy-proxy or https://images.example.org. Empty: the connector configuration (FOUNDRY_IMAGE_API_URL) is used.',
+  // Taverne: per-world settings of the connector's addons (an image server address…). The
+  // connector publishes their declarations in the world setting below; every client registers
+  // them here so the GM finds them in Game Settings. Secrets never go there: world settings
+  // reach every player.
+  game.settings.register(MODULE_ID, 'addonSettings', {
     scope: 'world',
-    config: true,
-    restricted: true,
-    type: String,
-    default: '',
+    config: false,
+    type: Array,
+    default: [],
   });
-  game.settings.register(MODULE_ID, 'imageApiPort', {
-    name: 'Image generation: port',
-    hint: 'Port of that API (e.g. 8189). 0: the address\'s own port, or the default one of http/https.',
-    scope: 'world',
-    config: true,
-    restricted: true,
-    type: Number,
-    default: 0,
-  });
-  game.settings.register(MODULE_ID, 'imageApiModel', {
-    name: 'Image generation: model',
-    hint: 'Model name sent to the API (for the ComfyUI proxy: the workflow name, e.g. moss-image-sft). Empty: the connector configuration (FOUNDRY_IMAGE_MODEL).',
-    scope: 'world',
-    config: true,
-    restricted: true,
-    type: String,
-    default: '',
-  });
+  registerAddonSettings();
 });
 
 Hooks.once('ready', async () => {

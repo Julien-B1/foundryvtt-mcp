@@ -321,6 +321,10 @@ export class FoundryCore {
       try {
         await this.foundryClient.connect();
         logger.info('Connected to FoundryVTT successfully');
+        if (this.foundryClient.isWriteEnabled()) {
+          const { publishAddonSettings } = await import('./addons/registry.js');
+          await publishAddonSettings(this.foundryClient);
+        }
       } catch (error) {
         if (!(error instanceof NoActiveWorldError)) {
           throw error;

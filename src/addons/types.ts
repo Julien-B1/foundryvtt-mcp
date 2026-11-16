@@ -46,7 +46,23 @@ export interface AddonDefinition {
   systems?: string[];
   /** Added to the connector's MCP instructions (keep it short: when to use the tools). */
   instructions?: string;
+  /**
+   * Per-world settings the GM edits in Foundry (Game Settings → FoundryVTT MCP Bridge), e.g.
+   * a server address. The connector publishes them; the companion module shows them (after a
+   * reload of the GM's page). Read them with ctx.worldSetting(key). World settings reach every
+   * player's browser: never put a secret there (use ctx.setting for keys).
+   */
+  worldSettings?: AddonWorldSetting[];
   tools: AddonTool[];
+}
+
+export interface AddonWorldSetting {
+  /** Letters and digits; stored as `foundryvtt-mcp-bridge.<addon>_<key>`. */
+  key: string;
+  name: string;
+  hint?: string;
+  type: 'string' | 'number' | 'boolean';
+  default: string | number | boolean;
 }
 
 /** What an addon's handler can use. Writes need FOUNDRY_WRITE_ENABLED=true. */
@@ -89,6 +105,8 @@ export interface AddonContext {
     /** A companion module command: get_compendium_document, search_compendium_content… */
     send(command: string, params: Record<string, unknown>, timeoutMs?: number): Promise<unknown>;
   };
+  /** One of this addon's worldSettings, as the GM set it in this world (its default otherwise). */
+  worldSetting(key: string): unknown;
   /** An addon setting: FOUNDRY_ADDON_<NAME>_<KEY> from the environment or the configuration file. */
   setting(key: string): string | undefined;
   text(t: string): AddonToolResult;

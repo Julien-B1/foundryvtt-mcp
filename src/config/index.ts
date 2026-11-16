@@ -137,20 +137,6 @@ const ConfigSchema = z.object({
    * `enabled: false` keeps the all-in-one process (one connection per
    * client-spawned instance).
    */
-  /**
-   * Taverne: image generation (generate_image) through an OpenAI-compatible
-   * POST /images/generations API (a ComfyUI proxy, OpenAI, LocalAI, a LiteLLM proxy…).
-   * The world settings of the companion module (address, port, model) take precedence over
-   * the URL and model here; the key is only here. No URL anywhere: the tool is unavailable.
-   */
-  imageGen: z.object({
-    apiUrl: z.string().url().optional(),
-    apiKey: z.string().optional(),
-    model: z.string().optional(),
-    size: z.string().default('1024x1024'),
-    timeoutSeconds: z.number().default(180),
-  }),
-
   shared: z.object({
     enabled: z.boolean().default(true),
     /** Minutes with no relay connected before the shared process exits; 0 = never. */
@@ -231,14 +217,6 @@ function rawConfig(v: ResolvedSettings['values']) {
       defaultWaitMs: int(v.FOUNDRY_EVENT_WAIT_MS),
     },
 
-    imageGen: {
-      apiUrl: v.FOUNDRY_IMAGE_API_URL,
-      apiKey: v.FOUNDRY_IMAGE_API_KEY,
-      model: v.FOUNDRY_IMAGE_MODEL,
-      size: v.FOUNDRY_IMAGE_SIZE,
-      timeoutSeconds: int(v.FOUNDRY_IMAGE_TIMEOUT_SECONDS),
-    },
-
     shared: {
       enabled: v.FOUNDRY_MCP_SHARED !== undefined ? v.FOUNDRY_MCP_SHARED !== 'false' : undefined,
       idleTimeoutMinutes: v.FOUNDRY_MCP_IDLE_TIMEOUT_MINUTES
@@ -254,7 +232,6 @@ const PATH_TO_SETTING: Record<string, string> = {
   logLevel: 'LOG_LEVEL',
   nodeEnv: 'NODE_ENV',
   'shared.idleTimeoutMinutes': 'FOUNDRY_MCP_IDLE_TIMEOUT_MINUTES',
-  'imageGen.apiUrl': 'FOUNDRY_IMAGE_API_URL',
 };
 
 /**

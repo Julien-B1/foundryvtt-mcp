@@ -132,6 +132,11 @@ function validate(def: unknown, spec: string): AddonDefinition {
     throw new Error(`addon name "${def.name}" must be lower-case letters, digits and dashes`);
   }
   const prefix = `${def.name.replace(/-/g, '_')}_`;
+  for (const s of Array.isArray(def.worldSettings) ? def.worldSettings : []) {
+    if (!isRecord(s) || typeof s.key !== 'string' || !/^[A-Za-z0-9]+$/.test(s.key)) {
+      throw new Error(`${def.name}: world setting keys are letters and digits`);
+    }
+  }
   for (const t of def.tools) {
     if (!isRecord(t) || typeof t.name !== 'string' || typeof t.handler !== 'function') {
       throw new Error(`${def.name}: every tool needs a name and a handler`);
@@ -221,6 +226,49 @@ export function addonInstructions(): string {
     .join('\n\n');
 }
 
+const BRIDGE_ID = 'foundryvtt-mcp-bridge';
+/** World setting listing every addon world setting, read by the companion module at init. */
+export const ADDON_SETTINGS_KEY = `${BRIDGE_ID}.addonSettings`;
+
+function worldSettingValue(client: FoundryClient, key: string): unknown {
+  const raw = client.getWorldCollection('Setting').find((d) => d.key === key)?.value;
+  if (typeof raw !== 'string') {
+    return raw;
+  }
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return raw;
+  }
+}
+
+/** The declarations the companion module registers, from every loaded addon. */
+export function addonSettingDeclarations() {
+  return loaded.flatMap((a) =>
+    (a.def.worldSettings ?? []).map((s) => ({ addon: a.def.name, ...s })),
+  );
+}
+
+/**
+ * Publishes the addons' world settings for the companion module (a world setting it reads at
+ * init). Best effort: needs the socket and write access; unchanged declarations are not rewritten.
+ */
+export async function publishAddonSettings(client: FoundryClient): Promise<void> {
+  const decls = addonSettingDeclarations();
+  try {
+    const current = worldSettingValue(client, ADDON_SETTINGS_KEY);
+    if (JSON.stringify(current ?? []) === JSON.stringify(decls)) {
+      return;
+    }
+    await client.setWorldSetting(ADDON_SETTINGS_KEY, decls);
+    logger.info(`Published ${decls.length} addon world settings for the companion module`);
+  } catch (error) {
+    logger.warn(
+      `Addon world settings not published: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
+}
+
 function addonSetting(addon: string, key: string): string | undefined {
   const name = `FOUNDRY_ADDON_${addon.replace(/-/g, '_').toUpperCase()}_${key.toUpperCase()}`;
   return processSettings()[name] ?? readConfigFile(configFilePath()).values[name];
@@ -277,6 +325,11 @@ export function addonContext(
         ).send(command, params, timeoutMs),
     },
     setting: (key) => addonSetting(addon.name, key),
+    worldSetting: (key) => {
+      const decl = addon.worldSettings?.find((s) => s.key === key);
+      const v = worldSettingValue(client, `${BRIDGE_ID}.${addon.name.replace(/-/g, '_')}_${key}`);
+      return v === undefined || v === null ? decl?.default : v;
+    },
     text: (t) => ({ content: [{ type: 'text', text: t }] }),
     fail,
   };
