@@ -27,6 +27,7 @@ import {
   saveSnapshot,
   snapshotScene,
 } from './snapshots.js';
+import { handlePlaceTiles } from './tiles.js';
 import { text } from './util.js';
 import { handleRenderScene, handleTraceWalls } from './vision.js';
 
@@ -359,6 +360,7 @@ export const taverneTools = [
 
 export const TAVERNE_WRITE_TOOLS = [
   'delete_documents',
+  'place_tiles',
   'restore_snapshot',
   'create_documents',
   'update_documents',
@@ -458,6 +460,8 @@ async function dispatch(
   session: HeadlessGmSession | null,
 ) {
   switch (name) {
+    case 'place_tiles':
+      return handlePlaceTiles(args, client);
     case 'render_document':
       return handleRenderDocument(args, session);
     case 'delete_documents':

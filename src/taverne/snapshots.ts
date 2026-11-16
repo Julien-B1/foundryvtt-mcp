@@ -30,6 +30,7 @@ export const SCENE_EMBEDDED: Record<string, string> = {
   notes: 'Note',
   templates: 'MeasuredTemplate',
   regions: 'Region',
+  levels: 'Level',
 };
 export const EMBEDDED_FIELD: Record<string, string> = Object.fromEntries(
   Object.entries(SCENE_EMBEDDED).map(([k, v]) => [v, k]),

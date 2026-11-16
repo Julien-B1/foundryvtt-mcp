@@ -69,6 +69,7 @@ const EMBEDDED_COLLECTIONS: Record<string, Record<string, string>> = {
     Tile: 'tiles',
     MeasuredTemplate: 'templates',
     Region: 'regions',
+    Level: 'levels',
   },
   Combat: { Combatant: 'combatants' },
   Item: { ActiveEffect: 'effects' },

@@ -180,3 +180,17 @@ describe('taverne light fields', () => {
     expect(() => lightData({ radius: 20 })).toThrow(/Unknown light field "radius"/);
   });
 });
+
+describe('taverne tiles', () => {
+  it('builds occlusion masks, a seeded generator and wall distances', async () => {
+    const { occlusionModes, rng, segmentDistance } = await import('../tiles.js');
+    expect(occlusionModes(['fade', 'radial'])).toBe(5);
+    expect(occlusionModes(undefined)).toBe(0);
+    expect(() => occlusionModes('roof')).toThrow(/Unknown occlusion/);
+    const a = rng(42);
+    const b = rng(42);
+    expect([a(), a()]).toEqual([b(), b()]);
+    expect(segmentDistance(5, 5, 0, 0, 10, 0)).toBe(5);
+    expect(segmentDistance(-3, 4, 0, 0, 10, 0)).toBe(5);
+  });
+});

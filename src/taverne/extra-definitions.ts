@@ -5,6 +5,17 @@
 
 const WRITE = ' WRITE: needs FOUNDRY_WRITE_ENABLED=true.';
 
+const UNITS = {
+  units: {
+    type: 'string',
+    enum: ['scene', 'grid', 'image', 'canvas'],
+    description:
+      'Coordinate units (default "scene"): scene = pixels from the map top-left corner (padding excluded); grid = grid cells; image = pixels of the source image (give imageWidth/imageHeight); canvas = raw Foundry canvas pixels.',
+  },
+  imageWidth: { type: 'number' },
+  imageHeight: { type: 'number' },
+};
+
 export const extraTools = [
   {
     name: 'delete_documents',
@@ -107,6 +118,42 @@ export const extraTools = [
         },
         format: { type: 'string', enum: ['jpeg', 'png'] },
       },
+    },
+  },
+  {
+    name: 'place_tiles',
+    description:
+      'Place many decor tiles in ONE call: props (tables, barrels, carts), roofs and tree canopies that fade when a token walks under them (overhead: true), and scattered clutter (rocks, bushes, debris, mushrooms) with seeded random scale and rotation, kept off the walls and apart from each other. x/y are the tile CENTRE. Size defaults to the image size; give assetGridSize (pixels per cell the asset pack was drawn at, often 100, 140, 200 or 256) to scale a pack to the scene grid, or width/height in units. Find images with list_scene_assets. Check with render_scene. Dressing: a few well-placed props beat many; scatter clutter along walls and in corners, not in walkways.' +
+      WRITE,
+    inputSchema: {
+      type: 'object',
+      properties: {
+        sceneId: { type: 'string' },
+        tiles: {
+          type: 'array',
+          items: { type: 'object' },
+          description:
+            '{src, x, y, width?, height?, scale?, rotation?, elevation?, alpha?, hidden?, overhead?, occlusion? (none|fade|surface|radial|vision, or a list), occlusionAlpha?, mirrorX?, mirrorY?, tint?, restrictions? {light, weather}, sort?, name?}',
+        },
+        scatter: {
+          type: 'object',
+          description:
+            '{src: path or list to pick from, count, area {x, y, width, height}, scale? number or [min, max], rotation? false or [min, max] degrees (default 0-360), minDistance? between items, wallMargin? distance kept from walls, avoidWalls? (default true), seed?}',
+        },
+        assetGridSize: { type: 'number' },
+        overhead: {
+          type: 'boolean',
+          description: 'Every tile is a roof/canopy: at the level top elevation, fading.',
+        },
+        overheadElevation: { type: 'number', description: 'Default: the scene level top (v14).' },
+        occlusion: { description: 'Default occlusion for every tile.' },
+        occlusionAlpha: { type: 'number' },
+        elevation: { type: 'number' },
+        alpha: { type: 'number' },
+        hidden: { type: 'boolean' },
+        ...UNITS,
+      },
+      required: ['sceneId'],
     },
   },
 ];

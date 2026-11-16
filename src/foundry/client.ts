@@ -5348,6 +5348,11 @@ export class FoundryClient {
    * silently falling back to a guess — a wrong width/height would otherwise
    * misalign the grid or tile silently.
    */
+  /** Taverne: an asset's pixel size, read from disk (FOUNDRY_DATA_PATH). */
+  imageSizeOf(relativeSrc: string): ImageSize {
+    return this.requireImageSize(relativeSrc);
+  }
+
   private requireImageSize(relativeSrc: string): ImageSize {
     const absolutePath = this.resolveDataPath(relativeSrc);
     const size = getImageSize(absolutePath);
