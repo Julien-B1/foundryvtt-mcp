@@ -78,4 +78,35 @@ export const extraTools = [
       required: ['id'],
     },
   },
+  {
+    name: 'render_document',
+    description:
+      "Screenshot of a document as a GM sees it in Foundry: actor or item sheet (optionally a tab), journal entry or one of its pages, roll table, macro, cards. Use it to check what you created (layout, derived values, links, images) before handing it over. uuid is the document UUID (Actor.<id>, JournalEntry.<id>.JournalEntryPage.<id>, Scene.<id>.Token.<id> for a token's actor…), or give type and id.",
+    inputSchema: {
+      type: 'object',
+      properties: {
+        uuid: { type: 'string' },
+        type: {
+          type: 'string',
+          description:
+            'With id, instead of uuid: Actor, Item, JournalEntry, RollTable, Macro, Cards.',
+        },
+        id: { type: 'string' },
+        pageName: { type: 'string', description: 'Journal: the page to show (part of its name).' },
+        pageId: { type: 'string' },
+        tab: {
+          type: 'string',
+          description:
+            'Sheet tab to open (system-specific: attributes, items, effects, biography…).',
+        },
+        tabGroup: { type: 'string', description: 'Tab group (default primary).' },
+        width: { type: 'number', description: 'Window width in px.' },
+        height: {
+          type: 'number',
+          description: 'Window height in px (taller to see a long journal page).',
+        },
+        format: { type: 'string', enum: ['jpeg', 'png'] },
+      },
+    },
+  },
 ];

@@ -183,7 +183,13 @@ export async function routeToolRequest(
   logger.debug(`Routing tool request: ${name}`, { args });
 
   if (isTaverneTool(name)) {
-    return routeTaverneTool(name, args, foundryClient, moduleBridge) as Promise<ToolResult>;
+    return routeTaverneTool(
+      name,
+      args,
+      foundryClient,
+      moduleBridge,
+      headlessGmSession,
+    ) as Promise<ToolResult>;
   }
 
   // Try the new registry system first

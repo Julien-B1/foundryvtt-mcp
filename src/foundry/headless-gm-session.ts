@@ -526,6 +526,56 @@ export class HeadlessGmSession {
     return this.browser !== null;
   }
 
+  /**
+   * Taverne: runs `prepare` in the game page — the source of an async function of `arg` that
+   * opens something and returns the CSS selector of the element to capture — screenshots that
+   * element, then runs `cleanup` (same shape). The viewport is enlarged meanwhile when
+   * `viewport` asks for more room (a tall journal page).
+   */
+  async screenshotInPage(
+    prepare: string,
+    cleanup: string,
+    arg: unknown,
+    options: {
+      type: 'jpeg' | 'png';
+      quality?: number;
+      viewport?: { width: number; height: number };
+    },
+  ): Promise<Buffer> {
+    const page = this.page;
+    if (!this.active || !page) {
+      throw new Error('The headless GM session is not logged in yet; try again in a moment.');
+    }
+    const resized =
+      options.viewport &&
+      (options.viewport.width > HEADLESS_VIEWPORT.width ||
+        options.viewport.height > HEADLESS_VIEWPORT.height);
+    if (resized && options.viewport) {
+      await page.setViewportSize({
+        width: Math.max(options.viewport.width, HEADLESS_VIEWPORT.width),
+        height: Math.max(options.viewport.height, HEADLESS_VIEWPORT.height),
+      });
+    }
+    try {
+      const call = (src: string) => `(${src})(${JSON.stringify(arg)})`;
+      const selector = await page.evaluate<string>(call(prepare));
+      return await page
+        .locator(selector)
+        .first()
+        .screenshot({
+          type: options.type,
+          ...(options.type === 'jpeg' ? { quality: options.quality ?? 85 } : {}),
+          animations: 'disabled',
+          timeout: 30_000,
+        });
+    } finally {
+      await page.evaluate(`(${cleanup})(${JSON.stringify(arg)})`).catch(() => undefined);
+      if (resized) {
+        await page.setViewportSize(HEADLESS_VIEWPORT).catch(() => undefined);
+      }
+    }
+  }
+
   /** True once the session is logged in with a live GM-tier Foundry client. */
   isActive(): boolean {
     return this.active;

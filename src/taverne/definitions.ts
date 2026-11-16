@@ -3,6 +3,7 @@
  */
 
 import type { FoundryClient } from '../foundry/client.js';
+import type { HeadlessGmSession } from '../foundry/headless-gm-session.js';
 import type { ModuleBridge } from '../foundry/module-bridge.js';
 import { extraTools } from './extra-definitions.js';
 import {
@@ -18,6 +19,7 @@ import {
   handleUpdateWalls,
 } from './handlers.js';
 import { handleDeleteDocuments, handleListEncounters } from './manage.js';
+import { handleRenderDocument } from './render-document.js';
 import {
   handleListSnapshots,
   handleRestoreSnapshot,
@@ -368,7 +370,7 @@ export const TAVERNE_WRITE_TOOLS = [
   'clear_scene_elements',
   'configure_scene',
 ];
-export const TAVERNE_BRIDGE_TOOLS = ['render_scene', 'trace_walls'];
+export const TAVERNE_BRIDGE_TOOLS = ['render_scene', 'trace_walls', 'render_document'];
 /** Reads of the cached world (no write, no module). */
 export const TAVERNE_SOCKET_READ_TOOLS = ['list_encounters', 'create_snapshot'];
 /** Served from local files or constants. */
@@ -384,13 +386,14 @@ export async function routeTaverneTool(
   args: Record<string, unknown>,
   client: FoundryClient,
   bridge: ModuleBridge | null,
+  session: HeadlessGmSession | null = null,
 ) {
   if (TAVERNE_WRITE_TOOLS.includes(name)) {
     client.assertCanWrite();
   }
   // Tools that delete or rewrite take a snapshot first, so restore_snapshot can undo them.
   const undo = autoSnapshot(name, args, client);
-  const result = await dispatch(name, args, client, bridge);
+  const result = await dispatch(name, args, client, bridge, session);
   if (undo && isTextResult(result)) {
     result.content.push(text(`Undo: restore_snapshot id \`${undo}\`.`).content[0] as never);
   }
@@ -452,8 +455,11 @@ async function dispatch(
   args: Record<string, unknown>,
   client: FoundryClient,
   bridge: ModuleBridge | null,
+  session: HeadlessGmSession | null,
 ) {
   switch (name) {
+    case 'render_document':
+      return handleRenderDocument(args, session);
     case 'delete_documents':
       return handleDeleteDocuments(args, client);
     case 'list_encounters':
