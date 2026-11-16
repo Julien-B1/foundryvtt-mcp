@@ -611,6 +611,7 @@ const WORLD_TYPES = new Set([
   'Playlist',
   'Scene',
   'Cards',
+  'Combat',
 ]);
 const SCENE_TYPES = new Set([
   'Token',
@@ -633,6 +634,37 @@ function idList(result: unknown[]): string {
     .join('\n');
 }
 
+/**
+ * A prepared encounter: `scene` is required, and each combatant may give only a `tokenId` —
+ * its actor, scene, name, image and hidden state are filled from that token. The encounter is
+ * created inactive and unstarted (round 0) unless the data says otherwise.
+ */
+export function combatData(
+  c: Record<string, unknown>,
+  client: FoundryClient,
+): Record<string, unknown> {
+  const sceneId = typeof c.scene === 'string' ? c.scene : fail('Combat needs scene (a scene id)');
+  const scene = client.getSceneOrThrow(sceneId);
+  const tokens = (Array.isArray(scene.tokens) ? scene.tokens : []).filter(isRecord);
+  const combatants = (Array.isArray(c.combatants) ? c.combatants : [])
+    .filter(isRecord)
+    .map((cb) => {
+      if (typeof cb.tokenId !== 'string') {
+        return cb;
+      }
+      const t =
+        tokens.find((tk) => tk._id === cb.tokenId) ??
+        fail(`Token ${String(cb.tokenId)} not found on scene ${sceneId}`);
+      return {
+        sceneId,
+        actorId: t.actorId,
+        hidden: t.hidden === true,
+        ...cb,
+      };
+    });
+  return { active: false, round: 0, turn: null, ...c, combatants };
+}
+
 export async function handleCreateDocuments(args: Record<string, unknown>, client: FoundryClient) {
   const type =
     typeof args.type === 'string' && WORLD_TYPES.has(args.type)
@@ -642,7 +674,8 @@ export async function handleCreateDocuments(args: Record<string, unknown>, clien
     Array.isArray(args.data) && args.data.every(isRecord)
       ? (args.data as Record<string, unknown>[])
       : fail('data must be an array of document objects');
-  const created = await client.modifyWorldDocuments(type, 'create', data);
+  const docs = type === 'Combat' ? data.map((c) => combatData(c, client)) : data;
+  const created = await client.modifyWorldDocuments(type, 'create', docs);
   return text(`📄 **${created.length} ${type} created**\n${idList(created)}`);
 }
 
@@ -676,7 +709,9 @@ export async function handleCreateSceneDocuments(
   });
   const data = (Array.isArray(args.data) ? args.data : fail('data must be an array')).map(
     (d, i) => {
-      if (!isRecord(d)) fail(`data[${i}] must be an object`);
+      if (!isRecord(d)) {
+        fail(`data[${i}] must be an object`);
+      }
       let out: Record<string, unknown> = { ...(d as Record<string, unknown>) };
       // A Token starts from its actor's prototype token (image, name, disposition, link, vision,
       // bars), as FoundryVTT's own drag and drop does; the given fields override it.
@@ -685,7 +720,9 @@ export async function handleCreateSceneDocuments(
         const proto: Record<string, unknown> = isRecord(actor.prototypeToken)
           ? { ...actor.prototypeToken }
           : {};
-        for (const k of ['_id', 'randomImg', 'appendNumber', 'prependAdjective']) delete proto[k];
+        for (const k of ['_id', 'randomImg', 'appendNumber', 'prependAdjective']) {
+          delete proto[k];
+        }
         out = { ...proto, name: actor.name, ...out };
       }
       if (Number.isFinite(out.x) && Number.isFinite(out.y)) {

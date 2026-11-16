@@ -82,7 +82,7 @@ export const taverneTools = [
   {
     name: 'create_documents',
     description:
-      'Create many world documents of one type in ONE call, with every field FoundryVTT accepts: Actor (name, type, img, system, flags, folder, prototypeToken {texture.src, disposition, sight, light, bar1…}, items [embedded Item data]), Item, JournalEntry (pages [{name, type: text|image, text: {content: html}, src}]), RollTable (formula, results [{type, text|documentUuid, range, weight}]), Folder (type, color, folder = parent id), Macro, Playlist (sounds [{name, path, volume, repeat}]), Cards. Use get_document_schema for system fields. Returns the ids to chain calls (folder ids, journal ids for notes, actor ids for tokens).' +
+      'Create many world documents of one type in ONE call, with every field FoundryVTT accepts: Actor (name, type, img, system, flags, folder, prototypeToken {texture.src, disposition, sight, light, bar1…}, items [embedded Item data]), Item, JournalEntry (pages [{name, type: text|image, text: {content: html}, src}]), RollTable (formula, results [{type, text|documentUuid, range, weight}]), Folder (type, color, folder = parent id), Combat (a prepared encounter, created unstarted: name, scene = scene id, combatants [{tokenId}] — actor, hidden state are filled from the token; add initiative to preset it), Macro, Playlist (sounds [{name, path, volume, repeat}]), Cards. Use get_document_schema for system fields. Returns the ids to chain calls (folder ids, journal ids for notes, actor ids for tokens).' +
       WRITE,
     inputSchema: {
       type: 'object',
@@ -99,6 +99,7 @@ export const taverneTools = [
             'Playlist',
             'Scene',
             'Cards',
+            'Combat',
           ],
         },
         data: { type: 'array', items: { type: 'object' } },
@@ -126,6 +127,7 @@ export const taverneTools = [
             'Playlist',
             'Scene',
             'Cards',
+            'Combat',
           ],
         },
         updates: { type: 'array', items: { type: 'object' } },

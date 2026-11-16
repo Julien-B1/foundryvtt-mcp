@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
+import type { FoundryClient } from '../../foundry/client.js';
 import type { WorldScene } from '../../foundry/types.js';
-import { buildWalls, converter, lightData, sceneFrame, wallFields } from '../handlers.js';
+import {
+  buildWalls,
+  combatData,
+  converter,
+  lightData,
+  sceneFrame,
+  wallFields,
+} from '../handlers.js';
 
 const scene = {
   _id: 'ssssssssssssssss',
@@ -120,5 +128,37 @@ describe('taverne lights', () => {
     expect(() => lightData({ preset: 'laser' })).toThrow(/Unknown light preset/);
     expect(() => lightData({ config: { glow: 1 } })).toThrow(/Unknown light config/);
     expect(() => lightData({ config: { color: 'red' } })).toThrow(/#rrggbb/);
+  });
+});
+
+describe('taverne encounters', () => {
+  const scene = {
+    _id: 'AAAAAAAAAAAAAAAA',
+    tokens: [{ _id: 'TOKENAAAAAAAAAAA', actorId: 'ACTORAAAAAAAAAAA', hidden: true }],
+  };
+  const client = { getSceneOrThrow: () => scene } as unknown as FoundryClient;
+
+  it('fills combatants from their token and leaves the encounter unstarted', () => {
+    const c = combatData(
+      { scene: scene._id, combatants: [{ tokenId: 'TOKENAAAAAAAAAAA', initiative: 12 }] },
+      client,
+    );
+    expect(c).toMatchObject({ active: false, round: 0, scene: scene._id });
+    expect(c.combatants).toEqual([
+      {
+        sceneId: scene._id,
+        actorId: 'ACTORAAAAAAAAAAA',
+        hidden: true,
+        tokenId: 'TOKENAAAAAAAAAAA',
+        initiative: 12,
+      },
+    ]);
+  });
+
+  it('refuses an unknown token or a missing scene', () => {
+    expect(() =>
+      combatData({ scene: scene._id, combatants: [{ tokenId: 'NOPE' }] }, client),
+    ).toThrow(/not found/);
+    expect(() => combatData({ combatants: [] }, client)).toThrow(/scene/);
   });
 });
