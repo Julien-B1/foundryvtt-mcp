@@ -94,6 +94,8 @@ export async function renderScene(params = {}) {
     await scene.view();
   }
   for (let i = 0; i < 100 && !canvas.ready; i++) await new Promise((r) => setTimeout(r, 100));
+  // Let document broadcasts of a write made just before (walls, lights) reach this client.
+  await new Promise((r) => setTimeout(r, params.settleMs ?? 750));
   if (!canvas.ready) throw new Error('Canvas not ready');
   const d = canvas.dimensions;
   const r = d.sceneRect;

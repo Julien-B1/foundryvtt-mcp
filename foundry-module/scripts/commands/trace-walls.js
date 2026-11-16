@@ -43,22 +43,40 @@ function boxBlur(rgb, w, h, r) {
 
 const dist = (a, i, b, j) => Math.hypot(a[i] - b[j], a[i + 1] - b[j + 1], a[i + 2] - b[j + 2]);
 
-/** Square-kernel dilate (op = 1) or erode (op = 0), separable. */
+/** Disc-kernel dilate (dilate = true) or erode, via a distance transform (no staircase artefacts). */
 function morph(mask, w, h, r, dilate) {
   if (r <= 0) return mask;
-  const tmp = new Uint8Array(mask.length);
+  // Squared Euclidean distance to the nearest pixel of the other value (Felzenszwalb-Huttenlocher).
+  const target = dilate ? 1 : 0;
+  const INF = 1e12;
+  const f = new Float64Array(Math.max(w, h));
+  const d = new Float64Array(Math.max(w, h));
+  const v = new Int32Array(Math.max(w, h));
+  const z = new Float64Array(Math.max(w, h) + 1);
+  const dt1 = (n) => {
+    let k = 0; v[0] = 0; z[0] = -INF; z[1] = INF;
+    for (let q = 1; q < n; q++) {
+      let s2 = ((f[q] + q * q) - (f[v[k]] + v[k] * v[k])) / (2 * q - 2 * v[k]);
+      while (s2 <= z[k]) { k--; s2 = ((f[q] + q * q) - (f[v[k]] + v[k] * v[k])) / (2 * q - 2 * v[k]); }
+      k++; v[k] = q; z[k] = s2; z[k + 1] = INF;
+    }
+    k = 0;
+    for (let q = 0; q < n; q++) { while (z[k + 1] < q) k++; d[q] = (q - v[k]) * (q - v[k]) + f[v[k]]; }
+  };
+  const dist2 = new Float64Array(w * h);
+  for (let x = 0; x < w; x++) {
+    for (let y = 0; y < h; y++) f[y] = mask[y * w + x] === target ? 0 : INF;
+    dt1(h);
+    for (let y = 0; y < h; y++) dist2[y * w + x] = d[y];
+  }
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) f[x] = dist2[y * w + x];
+    dt1(w);
+    for (let x = 0; x < w; x++) dist2[y * w + x] = d[x];
+  }
   const out = new Uint8Array(mask.length);
-  const want = dilate ? 1 : 0;
-  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-    let v = dilate ? 0 : 1;
-    for (let k = -r; k <= r && v !== want; k++) { const xx = x + k; if (xx >= 0 && xx < w && mask[y * w + xx] === want) v = want; }
-    tmp[y * w + x] = v;
-  }
-  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-    let v = dilate ? 0 : 1;
-    for (let k = -r; k <= r && v !== want; k++) { const yy = y + k; if (yy >= 0 && yy < h && tmp[yy * w + x] === want) v = want; }
-    out[y * w + x] = v;
-  }
+  const r2 = r * r;
+  for (let i = 0; i < out.length; i++) out[i] = dist2[i] <= r2 ? target : 1 - target;
   return out;
 }
 
