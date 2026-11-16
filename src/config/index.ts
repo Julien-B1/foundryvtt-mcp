@@ -138,16 +138,15 @@ const ConfigSchema = z.object({
    * client-spawned instance).
    */
   /**
-   * Taverne: image generation (generate_image) through an OpenAI-compatible API — OpenAI,
-   * xAI, Together, DeepInfra, LocalAI, stable-diffusion.cpp's sd-server, a LiteLLM proxy…
-   * (`images` = POST /images/generations), or OpenRouter-style chat completions returning
-   * images (`chat`). Unset URL: the tool is unavailable.
+   * Taverne: image generation (generate_image) through an OpenAI-compatible
+   * POST /images/generations API (a ComfyUI proxy, OpenAI, LocalAI, a LiteLLM proxy…).
+   * The world settings of the companion module (address, port, model) take precedence over
+   * the URL and model here; the key is only here. No URL anywhere: the tool is unavailable.
    */
   imageGen: z.object({
     apiUrl: z.string().url().optional(),
     apiKey: z.string().optional(),
     model: z.string().optional(),
-    apiStyle: z.enum(['images', 'chat']).default('images'),
     size: z.string().default('1024x1024'),
     timeoutSeconds: z.number().default(180),
   }),
@@ -236,7 +235,6 @@ function rawConfig(v: ResolvedSettings['values']) {
       apiUrl: v.FOUNDRY_IMAGE_API_URL,
       apiKey: v.FOUNDRY_IMAGE_API_KEY,
       model: v.FOUNDRY_IMAGE_MODEL,
-      apiStyle: v.FOUNDRY_IMAGE_API_STYLE,
       size: v.FOUNDRY_IMAGE_SIZE,
       timeoutSeconds: int(v.FOUNDRY_IMAGE_TIMEOUT_SECONDS),
     },
@@ -257,7 +255,6 @@ const PATH_TO_SETTING: Record<string, string> = {
   nodeEnv: 'NODE_ENV',
   'shared.idleTimeoutMinutes': 'FOUNDRY_MCP_IDLE_TIMEOUT_MINUTES',
   'imageGen.apiUrl': 'FOUNDRY_IMAGE_API_URL',
-  'imageGen.apiStyle': 'FOUNDRY_IMAGE_API_STYLE',
 };
 
 /**

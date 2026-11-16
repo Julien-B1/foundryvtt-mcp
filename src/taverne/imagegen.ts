@@ -1,15 +1,12 @@
 /**
- * @fileoverview Taverne: generate_image — token, portrait, item icon, prop or map art from any
- * OpenAI-compatible image API, uploaded into Foundry and optionally applied to an actor/item.
+ * @fileoverview Taverne: generate_image — token, portrait, item icon, prop or map art from an
+ * OpenAI-compatible image API (POST {base}/images/generations {model, prompt, n, size} →
+ * data[].b64_json | data[].url), uploaded into Foundry and optionally applied to an actor/item.
  *
- * Two request shapes cover nearly every provider:
- * - `images`: POST {url}/images/generations {model, prompt, n, size} → data[].b64_json | url.
- *   OpenAI (gpt-image, dall-e), xAI, Together, DeepInfra, Gemini's OpenAI endpoint (Imagen),
- *   LocalAI, stable-diffusion.cpp sd-server, Docker Model Runner, vLLM-Omni, a LiteLLM proxy
- *   (which also bridges Vertex, Bedrock, Automatic1111/ComfyUI-backed services…).
- * - `chat`: POST {url}/chat/completions {model, messages, modalities: ["image","text"]} →
- *   choices[0].message.images[].image_url.url (data URL). OpenRouter (Nano Banana, FLUX, GPT
- *   image…) and providers that answer images in chat.
+ * Where the API is: the companion module's world settings (address, port, model — set by the
+ * GM in Foundry's game settings) win over FOUNDRY_IMAGE_API_URL / FOUNDRY_IMAGE_MODEL. The key
+ * stays in the connector configuration (FOUNDRY_IMAGE_API_KEY): world settings reach players.
+ * Works with an OpenAI-compatible proxy in front of ComfyUI, OpenAI, LocalAI, a LiteLLM proxy…
  */
 
 import { config } from '../config/index.js';
@@ -94,21 +91,6 @@ export function extractImages(body: unknown): Array<{ b64?: string; url?: string
       fromUrl(d.url);
     }
   }
-  for (const c of Array.isArray(body.choices) ? body.choices : []) {
-    const msg = isRecord(c) && isRecord(c.message) ? c.message : undefined;
-    for (const img of Array.isArray(msg?.images) ? msg.images : []) {
-      const u = isRecord(img) && isRecord(img.image_url) ? img.image_url.url : undefined;
-      if (typeof u === 'string') {
-        fromUrl(u);
-      }
-    }
-    for (const part of Array.isArray(msg?.content) ? msg.content : []) {
-      const u = isRecord(part) && isRecord(part.image_url) ? part.image_url.url : undefined;
-      if (typeof u === 'string') {
-        fromUrl(u);
-      }
-    }
-  }
   return out;
 }
 
@@ -125,45 +107,97 @@ function mimeOf(buf: Buffer): { mime: string; ext: string } {
   return fail('The API returned something that is not a PNG, JPEG or WebP image');
 }
 
+const MODULE_ID = 'foundryvtt-mcp-bridge';
+
+/** A world setting of the companion module, parsed; undefined when unset. */
+function moduleSetting(client: FoundryClient, key: string): unknown {
+  const raw = client
+    .getWorldCollection('Setting')
+    .find((d) => d.key === `${MODULE_ID}.${key}`)?.value;
+  if (typeof raw !== 'string') {
+    return raw;
+  }
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return raw;
+  }
+}
+
+/**
+ * Base URL from an address and a port: `192.168.1.50` + 8189 → `http://192.168.1.50:8189/v1`;
+ * an address with a scheme, a port or a path keeps them (a port given separately replaces its port).
+ */
+export function apiBase(host: string, port?: number): string {
+  const withScheme = /^[a-z]+:\/\//i.test(host) ? host : `http://${host}`;
+  const u = new URL(withScheme);
+  if (port) {
+    u.port = String(port);
+  }
+  const path = u.pathname.replace(/\/+$/, '');
+  return `${u.origin}${path || '/v1'}`;
+}
+
+/** The endpoint and model in use, and where they come from. */
+export function imageEndpoint(client: FoundryClient): {
+  base: string;
+  model?: string;
+  from: string;
+} {
+  const host = moduleSetting(client, 'imageApiHost');
+  const port = moduleSetting(client, 'imageApiPort');
+  const model = moduleSetting(client, 'imageApiModel');
+  const ig = config.imageGen;
+  const fromWorld = typeof host === 'string' && host.trim() !== '';
+  const base = fromWorld
+    ? apiBase(host.trim(), typeof port === 'number' && port > 0 ? port : undefined)
+    : ig.apiUrl
+      ? ig.apiUrl.replace(/\/+$/, '')
+      : fail(
+          'Image generation is not configured: set the address and port in Foundry (Game Settings → FoundryVTT MCP Bridge → Image generation), or FOUNDRY_IMAGE_API_URL in the connector configuration.',
+        );
+  const m = typeof model === 'string' && model.trim() ? model.trim() : ig.model;
+  return {
+    base,
+    ...(m ? { model: m } : {}),
+    from: fromWorld ? 'world settings' : 'connector configuration',
+  };
+}
+
 async function callApi(
+  endpoint: { base: string; model?: string },
   prompt: string,
   size: string,
   n: number,
   transparent: boolean,
 ): Promise<Buffer[]> {
   const ig = config.imageGen;
-  const base = (
-    ig.apiUrl ??
-    fail(
-      'Image generation is not configured: set FOUNDRY_IMAGE_API_URL (an OpenAI-compatible base URL, e.g. https://api.openai.com/v1), FOUNDRY_IMAGE_API_KEY and FOUNDRY_IMAGE_MODEL',
-    )
-  ).replace(/\/$/, '');
   const headers: Record<string, string> = { 'content-type': 'application/json' };
   if (ig.apiKey) {
     headers.authorization = `Bearer ${ig.apiKey}`;
   }
-  const body =
-    ig.apiStyle === 'chat'
-      ? {
-          model: ig.model,
-          messages: [{ role: 'user', content: `${prompt}${size ? ` Aspect: ${size}.` : ''}` }],
-          modalities: ['image', 'text'],
-          n,
-        }
-      : {
-          ...(ig.model ? { model: ig.model } : {}),
-          prompt,
-          n,
-          size,
-          ...(transparent && /gpt-image/.test(ig.model ?? '') ? { background: 'transparent' } : {}),
-        };
-  const url = `${base}/${ig.apiStyle === 'chat' ? 'chat/completions' : 'images/generations'}`;
-  const res = await fetch(url, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify(body),
-    signal: AbortSignal.timeout(ig.timeoutSeconds * 1000),
-  });
+  const body = {
+    ...(endpoint.model ? { model: endpoint.model } : {}),
+    prompt,
+    n,
+    size,
+    // Only OpenAI's GPT image models know this field; others might refuse it.
+    ...(transparent && /gpt-image/.test(endpoint.model ?? '') ? { background: 'transparent' } : {}),
+  };
+  const url = `${endpoint.base}/images/generations`;
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(ig.timeoutSeconds * 1000),
+    });
+  } catch (error) {
+    return fail(
+      `Image API unreachable at ${url}: ${error instanceof Error ? (error.cause instanceof Error ? error.cause.message : error.message) : String(error)}`,
+    );
+  }
   const textBody = await res.text();
   if (!res.ok) {
     fail(`Image API answered ${res.status}: ${textBody.slice(0, 400)}`);
@@ -210,7 +244,8 @@ export async function handleGenerateImage(
     bridge ??
     fail('Uploading the image needs the companion module (FOUNDRY_MODULE_BRIDGE_ENABLED)');
 
-  const images = await callApi(prompt, size, n, def.transparent === true);
+  const endpoint = imageEndpoint(client);
+  const images = await callApi(endpoint, prompt, size, n, def.transparent === true);
   const targetDir = str(args.targetDir) ?? `assets/generated/${def.dir}`;
   const base = slug(str(args.filename) ?? subject);
   const paths: string[] = [];
@@ -265,7 +300,7 @@ export async function handleGenerateImage(
     content: [
       {
         type: 'text',
-        text: `🎨 **${paths.length} image${paths.length > 1 ? 's' : ''} generated** (${kind}, ${size}, ${config.imageGen.model ?? 'default model'})\n${paths.map((p) => `- ${p}`).join('\n')}${applied.length ? `\nApplied to: ${applied.join(', ')}${undo}` : ''}\nPrompt: ${prompt}`,
+        text: `🎨 **${paths.length} image${paths.length > 1 ? 's' : ''} generated** (${kind}, ${size}, ${endpoint.model ?? 'default model'} at ${endpoint.base}, from the ${endpoint.from})\n${paths.map((p) => `- ${p}`).join('\n')}${applied.length ? `\nApplied to: ${applied.join(', ')}${undo}` : ''}\nPrompt: ${prompt}`,
       },
       ...(args.preview === false
         ? []

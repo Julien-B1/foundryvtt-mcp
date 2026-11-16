@@ -260,7 +260,10 @@ describe('taverne universal vtt', () => {
 
 describe('taverne image generation', () => {
   it('builds house prompts and reads both answer shapes', async () => {
-    const { buildPrompt, extractImages } = await import('../imagegen.js');
+    const { apiBase, buildPrompt, extractImages } = await import('../imagegen.js');
+    expect(apiBase('192.168.1.50', 8189)).toBe('http://192.168.1.50:8189/v1');
+    expect(apiBase('https://img.example.org')).toBe('https://img.example.org/v1');
+    expect(apiBase('http://comfy-proxy:9000/api/v1/', 8189)).toBe('http://comfy-proxy:8189/api/v1');
     expect(buildPrompt('token', 'a murloc', 'WoW')).toMatch(
       /^Top-down tabletop RPG token of a murloc\..* Style: WoW\.$/,
     );
@@ -269,11 +272,9 @@ describe('taverne image generation', () => {
       { b64: 'QUJD' },
       { url: 'https://x/y.png' },
     ]);
-    expect(
-      extractImages({
-        choices: [{ message: { images: [{ image_url: { url: 'data:image/png;base64,QUJD' } }] } }],
-      }),
-    ).toEqual([{ b64: 'QUJD' }]);
+    expect(extractImages({ data: [{ url: 'data:image/png;base64,QUJD' }] })).toEqual([
+      { b64: 'QUJD' },
+    ]);
   });
 });
 

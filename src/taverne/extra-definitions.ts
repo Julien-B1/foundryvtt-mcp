@@ -247,7 +247,7 @@ export const extraTools = [
   {
     name: 'generate_image',
     description:
-      'Generate art with the configured image API (any OpenAI-compatible provider: OpenAI, OpenRouter, Gemini, xAI, Together, LocalAI, Stable Diffusion servers, a LiteLLM proxy…), upload it into Foundry and optionally apply it. kind picks a house prompt made for the table: token (top-down, transparent, centred — applied to the actor\'s prototype token), portrait (actor image), item (inventory icon), prop (top-down map asset, for place_tiles), map (top-down battlemap, then import or trace walls), scene (illustration, for journals), free (prompt used as is). prompt is only the subject ("a murloc oracle with a coral staff"); style adds a direction. Unavailable until FOUNDRY_IMAGE_API_URL is set.' +
+      "Generate art with the image API configured for this world (an OpenAI-compatible /images/generations endpoint: the table's ComfyUI proxy, OpenAI, LocalAI…; address, port and model in Foundry's game settings), upload it into Foundry and optionally apply it. kind picks a house prompt made for the table: token (top-down, transparent, centred — applied to the actor's prototype token), portrait (actor image), item (inventory icon), prop (top-down map asset, for place_tiles), map (top-down battlemap, then import or trace walls), scene (illustration, for journals), free (prompt used as is). prompt is only the subject (\"a murloc oracle with a coral staff\"); style adds a direction. Unavailable until an address is set (game settings) or FOUNDRY_IMAGE_API_URL." +
       WRITE,
     inputSchema: {
       type: 'object',
