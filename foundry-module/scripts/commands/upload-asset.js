@@ -17,8 +17,16 @@ export async function uploadAsset(params) {
     bytes[i] = binaryString.charCodeAt(i);
   }
 
+  const FP = foundry.applications?.apps?.FilePicker?.implementation ?? FilePicker;
+  // Taverne: create the target folder (and its parents) when missing.
+  let dir = '';
+  for (const part of targetDir.split('/').filter(Boolean)) {
+    dir = dir ? `${dir}/${part}` : part;
+    try { await FP.createDirectory('data', dir, {}); } catch { /* exists */ }
+  }
+
   const file = new File([bytes], filename, { type: mimeType });
-  const result = await FilePicker.upload('data', targetDir, file, {}, { notify: false });
+  const result = await FP.upload('data', targetDir, file, {}, { notify: false });
 
   return {
     path: result.path,

@@ -11,6 +11,8 @@ import { toggleStatusEffect } from './commands/toggle-status-effect.js';
 import { pingCanvas } from './commands/ping-canvas.js';
 import { setPause } from './commands/set-pause.js';
 import { uploadAsset } from './commands/upload-asset.js';
+import { renderScene } from './commands/render-scene.js';
+import { traceWalls } from './commands/trace-walls.js';
 
 const MODULE_ID = 'foundryvtt-mcp-bridge';
 
@@ -28,6 +30,8 @@ const COMMANDS = {
   ping_canvas: (params) => pingCanvas(params),
   set_pause: (params) => setPause(params),
   upload_asset: (params) => uploadAsset(params),
+  render_scene: (params) => renderScene(params),
+  trace_walls: (params) => traceWalls(params),
 };
 
 /** @type {BridgeTransport | null} */

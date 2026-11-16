@@ -10,7 +10,10 @@
  * that mutate from a mixed group are listed by hand below.
  */
 
+import { TAVERNE_WRITE_TOOLS } from '../taverne/definitions.js';
+
 export const WRITE_TOOLS: ReadonlySet<string> = new Set([
+  ...TAVERNE_WRITE_TOOLS,
   // actorMutationTools
   'update_actor_attributes',
   'create_world_actor',

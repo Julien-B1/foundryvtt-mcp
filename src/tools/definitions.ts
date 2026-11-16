@@ -1,3 +1,5 @@
+import { taverneTools } from '../taverne/definitions.js';
+
 /**
  * @fileoverview Tool definitions for FoundryVTT MCP Server
  *
@@ -3371,6 +3373,7 @@ export const eventTools = [
  */
 export function getAllTools() {
   return [
+    ...taverneTools,
     ...diceTools,
     ...actorTools,
     ...actorMutationTools,

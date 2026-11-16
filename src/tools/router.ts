@@ -1,3 +1,4 @@
+import { isTaverneTool, routeTaverneTool } from '../taverne/definitions.js';
 /**
  * Tool routing and handler coordination
  */
@@ -180,6 +181,10 @@ export async function routeToolRequest(
   healthRuntime: HealthRuntime = {},
 ): Promise<ToolResult> {
   logger.debug(`Routing tool request: ${name}`, { args });
+
+  if (isTaverneTool(name)) {
+    return routeTaverneTool(name, args, foundryClient, moduleBridge) as Promise<ToolResult>;
+  }
 
   // Try the new registry system first
   if (toolRegistry.has(name)) {

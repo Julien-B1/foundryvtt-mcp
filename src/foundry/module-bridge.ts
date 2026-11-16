@@ -87,6 +87,8 @@ export const LEGACY_COMMANDS: readonly string[] = [
 export const COMMAND_SINCE: Readonly<Record<string, string>> = {
   get_actor_stats: '0.6.0',
   toggle_status_effect: '0.6.0',
+  render_scene: '0.6.1',
+  trace_walls: '0.6.1',
 };
 
 /**
@@ -633,7 +635,11 @@ export class ModuleBridge {
    *   is sent — or if the module reports an error, or the request times out
    *   (the module hung).
    */
-  send(type: string, params: Record<string, unknown> = {}): Promise<unknown> {
+  send(
+    type: string,
+    params: Record<string, unknown> = {},
+    timeoutMs: number = this.requestTimeoutMs,
+  ): Promise<unknown> {
     if (!this.isConnected() || !this.socket) {
       throw new Error(
         'No authenticated Foundry module connected to the bridge. Install and enable the companion module (0.5.0 or later), confirm FOUNDRY_MODULE_BRIDGE_ENABLED=true, and check that the headless GM session is logged in.',
@@ -648,8 +654,8 @@ export class ModuleBridge {
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
         this.pending.delete(id);
-        reject(new Error(`Module command '${type}' timed out after ${this.requestTimeoutMs}ms`));
-      }, this.requestTimeoutMs);
+        reject(new Error(`Module command '${type}' timed out after ${timeoutMs}ms`));
+      }, timeoutMs);
 
       this.pending.set(id, { resolve, reject, timeout });
       socket.send(JSON.stringify({ id, type, params }));

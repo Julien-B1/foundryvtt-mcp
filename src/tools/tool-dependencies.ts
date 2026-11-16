@@ -17,6 +17,7 @@
  * A unit test checks that every tool and resource is classified.
  */
 
+import { TAVERNE_BRIDGE_TOOLS, TAVERNE_WRITE_TOOLS } from '../taverne/definitions.js';
 import { isRecord } from '../utils/guards.js';
 
 export type ToolDependency =
@@ -134,6 +135,10 @@ const SOCKET_TOOLS = [
 
 const TOOL_DEPENDENCIES: ReadonlyMap<string, ToolDependency> = new Map<string, ToolDependency>([
   ...SOCKET_TOOLS.map((name): [string, ToolDependency] => [name, 'socket']),
+  // Taverne batch and vision tools.
+  ...TAVERNE_WRITE_TOOLS.map((name): [string, ToolDependency] => [name, 'socket']),
+  ...TAVERNE_BRIDGE_TOOLS.map((name): [string, ToolDependency] => [name, 'bridge']),
+  ['list_scene_presets', 'local'],
   // Reads a compendium document through the module, then writes over the socket.
   ['import_compendium_actor', 'socket+bridge'],
   // The module only for a compendium source; see needsBridge.

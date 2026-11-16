@@ -180,6 +180,21 @@ const ARGS: Record<string, Record<string, unknown>> = {
   ping_canvas: { x: 0, y: 0 },
   set_pause: { paused: true },
   upload_asset: { targetDir: 'maps', filename: 'map.png', contentBase64: 'AAAA' },
+  create_walls: {
+    sceneId: SCENE,
+    paths: [
+      {
+        points: [
+          [0, 0],
+          [100, 0],
+        ],
+      },
+    ],
+  },
+  create_lights: { sceneId: SCENE, lights: [{ x: 0, y: 0, preset: 'torch' }] },
+  update_lights: { sceneId: SCENE, updates: [{ id: 'llllllllllllllll', config: { dim: 4 } }] },
+  clear_scene_elements: { sceneId: SCENE, kinds: ['walls'] },
+  configure_scene: { sceneId: SCENE, changes: { 'environment.darknessLevel': 0.5 } },
 };
 
 /** Tools classified as writing: the write queue, and every write over the socket. */

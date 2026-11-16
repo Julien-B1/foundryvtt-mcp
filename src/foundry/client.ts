@@ -5884,6 +5884,49 @@ export class FoundryClient {
   }
 
   /**
+   * Taverne: the cached scene, or throws. Used by the batch tools in src/taverne.
+   */
+  getSceneOrThrow(sceneId: string): WorldScene {
+    if (!FOUNDRY_ID_PATTERN.test(sceneId)) {
+      throw new Error(`Invalid sceneId format: ${sceneId}`);
+    }
+    const scene = this.worldData?.scenes.find((s) => s._id === sceneId);
+    if (!scene) {
+      throw new Error(`Scene not found: ${sceneId}`);
+    }
+    return scene;
+  }
+
+  /**
+   * Taverne: creates, updates or deletes many embedded documents of a scene in one
+   * `modifyDocument` request (Wall, AmbientLight, AmbientSound, Tile, Drawing, Note,
+   * Region, Token). `payload` is the data array (create), the updates array with
+   * `_id` (update) or the id array (delete). Returns the server's result array.
+   */
+  async modifySceneEmbedded(
+    sceneId: string,
+    type: string,
+    action: 'create' | 'update' | 'delete',
+    payload: unknown[],
+  ): Promise<unknown[]> {
+    this.assertWriteable();
+    this.getSceneOrThrow(sceneId);
+    if (payload.length === 0) return [];
+    const key = action === 'create' ? 'data' : action === 'update' ? 'updates' : 'ids';
+    return this.modifyDocument(type, action, { [key]: payload, parentUuid: `Scene.${sceneId}` });
+  }
+
+  /** Taverne: updates the Scene document itself (validated by the caller). */
+  async updateSceneDocument(sceneId: string, changes: Record<string, unknown>): Promise<unknown> {
+    this.assertWriteable();
+    this.getSceneOrThrow(sceneId);
+    const result = await this.modifyDocument('Scene', 'update', {
+      updates: [{ _id: sceneId, ...changes }],
+    });
+    return result[0];
+  }
+
+  /**
    * Lists the Walls on a scene, read from the cached worldData snapshot —
    * no network round trip. Lets a caller find a wallId for delete_wall/
    * set_door_state without guessing (mirrors {@link listTiles}).
