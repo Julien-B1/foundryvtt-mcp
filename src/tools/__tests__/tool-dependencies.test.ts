@@ -14,7 +14,7 @@ const tools = getAllTools().map((tool) => tool.name);
 
 describe('tool dependencies', () => {
   it('classifies every tool definition', () => {
-    expect(tools).toHaveLength(127);
+    expect(tools).toHaveLength(132);
     for (const name of tools) {
       expect(toolDependency(name), name).toBeDefined();
     }
@@ -35,12 +35,12 @@ describe('tool dependencies', () => {
       counts[dependency] = (counts[dependency] ?? 0) + 1;
     }
     expect(counts).toEqual({
-      socket: 102,
+      socket: 106,
       'socket+bridge': 3,
       bridge: 11,
       rest: 5,
       'rest-or-local': 1,
-      local: 4,
+      local: 5,
       health: 1,
     });
   });

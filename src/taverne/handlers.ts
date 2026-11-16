@@ -5,7 +5,6 @@
  * i.e. one `modifyDocument` request per batch (the core write protocol).
  */
 
-import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js';
 import type { FoundryClient } from '../foundry/client.js';
 import type { WorldScene } from '../foundry/types.js';
 import { isRecord } from '../utils/guards.js';
@@ -18,13 +17,8 @@ import {
   LIGHT_PRESETS,
   WALL_PRESETS,
 } from './presets.js';
+import { fail, text } from './util.js';
 import { getTrace, type TracedPath } from './vision.js';
-
-type Text = { content: Array<{ type: 'text'; text: string }> };
-const text = (t: string): Text => ({ content: [{ type: 'text', text: t }] });
-function fail(m: string): never {
-  throw new McpError(ErrorCode.InvalidParams, m);
-}
 
 /* -------------------------------------------- */
 /*  Coordinates                                 */
@@ -278,6 +272,8 @@ const LIGHT_CONFIG_KEYS = new Set([
   'animation',
   'darkness',
 ]);
+/** Fields of a light spec that are not document or config fields. */
+const LIGHT_SPEC_KEYS = new Set(['id', 'x', 'y', 'preset', 'config']);
 const LIGHT_DOC_KEYS = new Set([
   'rotation',
   'walls',
@@ -317,6 +313,20 @@ export function lightData(spec: Record<string, unknown>): {
     if (p.doc) {
       doc = { ...doc, ...p.doc };
     }
+  }
+  // Config fields may also be given flat (dim, bright, color, animation…), next to x/y.
+  const flat: Record<string, unknown> = {};
+  for (const k of Object.keys(spec)) {
+    if (LIGHT_CONFIG_KEYS.has(k)) {
+      flat[k] = spec[k];
+    } else if (!LIGHT_DOC_KEYS.has(k) && !LIGHT_SPEC_KEYS.has(k)) {
+      fail(
+        `Unknown light field "${k}". Allowed: ${[...LIGHT_SPEC_KEYS, ...LIGHT_DOC_KEYS, ...LIGHT_CONFIG_KEYS].join(', ')}`,
+      );
+    }
+  }
+  if (Object.keys(flat).length) {
+    config = mergeDeep(config, flat);
   }
   if (isRecord(spec.config)) {
     for (const k of Object.keys(spec.config)) {

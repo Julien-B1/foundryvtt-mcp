@@ -162,3 +162,21 @@ describe('taverne encounters', () => {
     expect(() => combatData({ combatants: [] }, client)).toThrow(/scene/);
   });
 });
+
+describe('taverne snapshots', () => {
+  it('compares sources ignoring key order and _stats', async () => {
+    const { same } = await import('../snapshots.js');
+    expect(
+      same({ a: 1, b: [{ x: 1, y: 2 }], _stats: { t: 1 } }, { b: [{ y: 2, x: 1 }], a: 1 }),
+    ).toBe(true);
+    expect(same({ a: 1 }, { a: 2 })).toBe(false);
+    expect(same({ a: 1 }, undefined)).toBe(false);
+  });
+});
+
+describe('taverne light fields', () => {
+  it('accepts config fields given flat and refuses unknown ones', () => {
+    expect(lightData({ dim: 20, bright: 4 }).config).toMatchObject({ dim: 20, bright: 4 });
+    expect(() => lightData({ radius: 20 })).toThrow(/Unknown light field "radius"/);
+  });
+});

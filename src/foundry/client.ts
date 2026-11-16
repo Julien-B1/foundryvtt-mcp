@@ -2782,6 +2782,11 @@ export class FoundryClient {
    * and an active authenticated Socket.IO session (the primary transport).
    * Throws a clear, actionable error otherwise.
    */
+  /** Taverne: the write gate, for tools that check their selection against the cache first. */
+  assertCanWrite(): void {
+    this.assertWriteable();
+  }
+
   private assertWriteable(): void {
     if (!this.config.writeEnabled) {
       throw new Error(
@@ -5908,12 +5913,19 @@ export class FoundryClient {
     type: string,
     action: 'create' | 'update' | 'delete',
     payload: unknown[],
+    options: Record<string, unknown> = {},
   ): Promise<unknown[]> {
     this.assertWriteable();
     this.getSceneOrThrow(sceneId);
-    if (payload.length === 0) return [];
+    if (payload.length === 0) {
+      return [];
+    }
     const key = action === 'create' ? 'data' : action === 'update' ? 'updates' : 'ids';
-    return this.modifyDocument(type, action, { [key]: payload, parentUuid: `Scene.${sceneId}` });
+    return this.modifyDocument(type, action, {
+      ...options,
+      [key]: payload,
+      parentUuid: `Scene.${sceneId}`,
+    });
   }
 
   /**
@@ -5922,16 +5934,40 @@ export class FoundryClient {
    */
   async modifyWorldDocuments(
     type: string,
-    action: 'create' | 'update',
+    action: 'create' | 'update' | 'delete',
     payload: unknown[],
+    options: Record<string, unknown> = {},
   ): Promise<unknown[]> {
     this.assertWriteable();
-    if (payload.length === 0) return [];
-    return this.modifyDocument(
-      type,
-      action,
-      action === 'create' ? { data: payload } : { updates: payload },
-    );
+    if (payload.length === 0) {
+      return [];
+    }
+    const key = action === 'create' ? 'data' : action === 'update' ? 'updates' : 'ids';
+    return this.modifyDocument(type, action, { ...options, [key]: payload });
+  }
+
+  /**
+   * Taverne: the cached raw documents of a top-level type (Actor, Item, Scene, JournalEntry,
+   * Combat, Folder, Macro, Playlist, RollTable, Cards). Empty when the type is not cached.
+   */
+  getWorldCollection(type: string): Record<string, unknown>[] {
+    const key = (
+      {
+        Actor: 'actors',
+        Item: 'items',
+        Scene: 'scenes',
+        JournalEntry: 'journal',
+        Combat: 'combats',
+        Folder: 'folders',
+        Macro: 'macros',
+        Playlist: 'playlists',
+        RollTable: 'tables',
+        Cards: 'cards',
+      } as Record<string, string>
+    )[type];
+    const data = this.worldData as unknown as Record<string, unknown> | null;
+    const list = key && data ? data[key] : undefined;
+    return Array.isArray(list) ? list.filter(isRecord) : [];
   }
 
   /** Taverne: updates the Scene document itself (validated by the caller). */

@@ -4,6 +4,7 @@
 
 import type { FoundryClient } from '../foundry/client.js';
 import type { ModuleBridge } from '../foundry/module-bridge.js';
+import { extraTools } from './extra-definitions.js';
 import {
   handleClearSceneElements,
   handleConfigureScene,
@@ -16,6 +17,15 @@ import {
   handleUpdateLights,
   handleUpdateWalls,
 } from './handlers.js';
+import { handleDeleteDocuments, handleListEncounters } from './manage.js';
+import {
+  handleListSnapshots,
+  handleRestoreSnapshot,
+  handleSnapshot,
+  saveSnapshot,
+  snapshotScene,
+} from './snapshots.js';
+import { text } from './util.js';
 import { handleRenderScene, handleTraceWalls } from './vision.js';
 
 const WRITE = ' WRITE: one batched request; needs FOUNDRY_WRITE_ENABLED=true.';
@@ -342,9 +352,12 @@ export const taverneTools = [
       required: ['sceneId'],
     },
   },
+  ...extraTools,
 ];
 
 export const TAVERNE_WRITE_TOOLS = [
+  'delete_documents',
+  'restore_snapshot',
   'create_documents',
   'update_documents',
   'create_scene_documents',
@@ -356,6 +369,10 @@ export const TAVERNE_WRITE_TOOLS = [
   'configure_scene',
 ];
 export const TAVERNE_BRIDGE_TOOLS = ['render_scene', 'trace_walls'];
+/** Reads of the cached world (no write, no module). */
+export const TAVERNE_SOCKET_READ_TOOLS = ['list_encounters', 'create_snapshot'];
+/** Served from local files or constants. */
+export const TAVERNE_LOCAL_TOOLS = ['list_scene_presets', 'list_snapshots'];
 const NAMES = new Set(taverneTools.map((t) => t.name));
 
 export function isTaverneTool(name: string): boolean {
@@ -368,7 +385,85 @@ export async function routeTaverneTool(
   client: FoundryClient,
   bridge: ModuleBridge | null,
 ) {
+  if (TAVERNE_WRITE_TOOLS.includes(name)) {
+    client.assertCanWrite();
+  }
+  // Tools that delete or rewrite take a snapshot first, so restore_snapshot can undo them.
+  const undo = autoSnapshot(name, args, client);
+  const result = await dispatch(name, args, client, bridge);
+  if (undo && isTextResult(result)) {
+    result.content.push(text(`Undo: restore_snapshot id \`${undo}\`.`).content[0] as never);
+  }
+  return result;
+}
+
+function isTextResult(r: unknown): r is { content: unknown[] } {
+  return typeof r === 'object' && r !== null && Array.isArray((r as { content?: unknown }).content);
+}
+
+const SCENE_REWRITES = new Set([
+  'clear_scene_elements',
+  'update_walls',
+  'update_lights',
+  'configure_scene',
+]);
+
+/** The snapshot id taken before a rewriting call, if it is one. */
+function autoSnapshot(
+  name: string,
+  args: Record<string, unknown>,
+  client: FoundryClient,
+): string | undefined {
+  const sceneId = typeof args.sceneId === 'string' ? args.sceneId : undefined;
+  try {
+    if (
+      sceneId &&
+      (SCENE_REWRITES.has(name) ||
+        ((name === 'create_walls' || name === 'create_lights') && args.replace === true))
+    ) {
+      return snapshotScene(client, sceneId, `before ${name}`).id;
+    }
+    if (
+      name === 'update_documents' &&
+      typeof args.type === 'string' &&
+      Array.isArray(args.updates)
+    ) {
+      const ids = new Set(
+        args.updates.map((u) =>
+          typeof u === 'object' && u ? (u as { _id?: unknown })._id : undefined,
+        ),
+      );
+      const docs = client.getWorldCollection(args.type).filter((d) => ids.has(d._id));
+      return docs.length
+        ? saveSnapshot({
+            label: `before update_documents ${args.type}`,
+            documents: { [args.type]: docs },
+          }).id
+        : undefined;
+    }
+  } catch {
+    // An unknown scene or type: the handler reports it.
+  }
+  return undefined;
+}
+
+async function dispatch(
+  name: string,
+  args: Record<string, unknown>,
+  client: FoundryClient,
+  bridge: ModuleBridge | null,
+) {
   switch (name) {
+    case 'delete_documents':
+      return handleDeleteDocuments(args, client);
+    case 'list_encounters':
+      return handleListEncounters(args, client);
+    case 'create_snapshot':
+      return handleSnapshot(args, client);
+    case 'list_snapshots':
+      return handleListSnapshots(args);
+    case 'restore_snapshot':
+      return handleRestoreSnapshot(args, client);
     case 'list_scene_presets':
       return handleListScenePresets();
     case 'create_walls':
