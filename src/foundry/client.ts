@@ -881,7 +881,7 @@ export class FoundryClient {
         await this.http.get('/api/status');
         logger.info('Connected to FoundryVTT via REST API module (diagnostics)');
       } catch (error) {
-        if (!(user && password)) {
+        if (!(user && password !== undefined)) {
           logger.error('Failed to connect via REST API module:', error);
           throw error;
         }
@@ -892,7 +892,7 @@ export class FoundryClient {
       }
     }
 
-    if (user && password) {
+    if (user && password !== undefined) {
       this.stopped = false;
       try {
         await this.establishSession(user, password);
