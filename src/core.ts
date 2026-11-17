@@ -193,7 +193,7 @@ export class FoundryCore {
     if (config.foundry.username) {
       clientConfig.username = config.foundry.username;
     }
-    if (config.foundry.password) {
+    if (config.foundry.password !== undefined) {
       clientConfig.password = config.foundry.password;
     }
     if (config.foundry.userId) {
@@ -260,7 +260,12 @@ export class FoundryCore {
     const headlessPassword = this.sharedAccount
       ? config.foundry.password
       : (config.headlessGm.password ?? config.foundry.password);
-    if (this.moduleBridge && config.headlessGm.enabled && headlessUsername && headlessPassword) {
+    if (
+      this.moduleBridge &&
+      config.headlessGm.enabled &&
+      headlessUsername &&
+      headlessPassword !== undefined
+    ) {
       const bridge = this.moduleBridge;
       const client = this.foundryClient;
       this.headlessGmSession = new HeadlessGmSession({

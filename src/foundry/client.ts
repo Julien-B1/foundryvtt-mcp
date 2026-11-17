@@ -839,7 +839,7 @@ export class FoundryClient {
     }
 
     const hasSocketCredentials = Boolean(
-      (this.config.userId || this.config.username) && this.config.password,
+      (this.config.userId || this.config.username) && this.config.password !== undefined,
     );
     const modes = [
       ...(this.config.apiKey ? ['REST API'] : []),
@@ -868,7 +868,8 @@ export class FoundryClient {
     const user = this.config.userId || this.config.username;
     const password = this.config.password;
 
-    if (!this.config.apiKey && !(user && password)) {
+    // An empty password is a valid Foundry login (a user created without one)
+    if (!this.config.apiKey && !(user && password !== undefined)) {
       throw new Error(
         'Socket.IO mode requires username/userId and password. ' +
           'Set FOUNDRY_USERNAME + FOUNDRY_PASSWORD or FOUNDRY_USER_ID + FOUNDRY_PASSWORD.',
@@ -968,7 +969,7 @@ export class FoundryClient {
     }
     const user = this.config.userId || this.config.username;
     const password = this.config.password;
-    if (this.stopped || !(user && password)) {
+    if (this.stopped || !(user && password !== undefined)) {
       return Promise.reject(new Error('No Socket.IO credentials to reauthenticate with'));
     }
     clearTimeout(this.reauthTimer ?? undefined);
@@ -1066,7 +1067,7 @@ export class FoundryClient {
    */
   isReconnecting(): boolean {
     const hasCredentials = Boolean(
-      (this.config.userId || this.config.username) && this.config.password,
+      (this.config.userId || this.config.username) && this.config.password !== undefined,
     );
     return hasCredentials && !this.stopped && !this.isSocketAuthenticated();
   }
@@ -7133,7 +7134,7 @@ export class FoundryClient {
 
   async testConnection(): Promise<boolean> {
     try {
-      if (this.config.username && this.config.password) {
+      if (this.config.username && this.config.password !== undefined) {
         await this.connect();
         return true;
       }
