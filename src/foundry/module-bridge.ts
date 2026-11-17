@@ -91,6 +91,7 @@ export const COMMAND_SINCE: Readonly<Record<string, string>> = {
   trace_walls: '0.6.1',
   export_adventure: '0.6.2',
   import_adventure: '0.6.2',
+  call_module_api: '0.6.5',
 };
 
 /**
