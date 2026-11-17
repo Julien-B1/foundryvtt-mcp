@@ -21,6 +21,13 @@ const PREPARE = `async (a) => {
   }
   const app = doc.sheet;
   if (!app) throw new Error(doc.documentName + ' has no sheet');
+  // A colour scheme for this capture only: the body class Foundry sets from the user's choice.
+  if (a.theme) {
+    const b = document.body.classList;
+    window.__taverneTheme = [...b].filter((c) => c === 'theme-dark' || c === 'theme-light');
+    b.remove('theme-dark', 'theme-light');
+    b.add('theme-' + a.theme);
+  }
   await app.render({ force: true, ...(pageId ? { pageId } : {}) });
   for (let i = 0; i < 50 && !app.rendered; i++) await new Promise((r) => setTimeout(r, 100));
   const el = app.element instanceof HTMLElement ? app.element : app.element?.[0];
@@ -48,6 +55,11 @@ const PREPARE = `async (a) => {
 const CLEANUP = `async () => {
   const app = window.__taverneRendered;
   delete window.__taverneRendered;
+  if (window.__taverneTheme) {
+    document.body.classList.remove('theme-dark', 'theme-light');
+    document.body.classList.add(...window.__taverneTheme);
+    delete window.__taverneTheme;
+  }
   const notes = document.getElementById('notifications');
   if (notes) notes.style.visibility = '';
   const el = app?.element instanceof HTMLElement ? app.element : app?.element?.[0];
@@ -77,6 +89,7 @@ export async function handleRenderDocument(
       pageName: str(args.pageName),
       tab: str(args.tab),
       tabGroup: str(args.tabGroup),
+      theme: args.theme === 'dark' || args.theme === 'light' ? args.theme : undefined,
       width,
       height,
     },
@@ -89,7 +102,7 @@ export async function handleRenderDocument(
     content: [
       {
         type: 'text',
-        text: `🖼️ ${uuid} as the GM sees it${args.tab ? ` (tab ${String(args.tab)})` : ''}`,
+        text: `🖼️ ${uuid} as the GM sees it${args.tab ? ` (tab ${String(args.tab)})` : ''}${args.theme === 'dark' || args.theme === 'light' ? `, ${args.theme} scheme` : ''}`,
       },
       { type: 'image', data: image.toString('base64'), mimeType: `image/${format}` },
     ],

@@ -117,6 +117,11 @@ export const extraTools = [
             'Sheet tab to open (system-specific: attributes, items, effects, biography…).',
         },
         tabGroup: { type: 'string', description: 'Tab group (default primary).' },
+        theme: {
+          type: 'string',
+          enum: ['dark', 'light'],
+          description: "Colour scheme for this capture only (default: the connector user's own).",
+        },
         width: { type: 'number', description: 'Window width in px.' },
         height: {
           type: 'number',
