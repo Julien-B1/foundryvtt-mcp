@@ -59,7 +59,8 @@ export async function callModuleApi(params) {
       version = v;
       const args = await resolveArgs(Array.isArray(call.args) ? call.args : []);
       const value = await fn.apply(owner, args);
-      results.push({ fn: call.fn, ok: true, value: serialize(value, { maxDepth: 4, maxNodes: 2000 }) });
+      const out = serialize(value, { maxDepth: 4, maxNodes: 2000 });
+      results.push({ fn: call.fn, ok: true, value: out.value, ...(out.truncated ? { truncated: true } : {}) });
     } catch (error) {
       results.push({ fn: call.fn, ok: false, error: error instanceof Error ? error.message : String(error) });
     }

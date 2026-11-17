@@ -87,7 +87,7 @@ The handler's `ctx`:
 | `ctx.documents.create/update/delete(type, …)` | batched world writes |
 | `ctx.documents.createEmbedded/updateEmbedded/deleteEmbedded(parentUuid, type, …)` | items and effects of `Actor.<id>`, pages of `JournalEntry.<id>`, documents of `Scene.<id>` |
 | `ctx.snapshot(label, {Actor: [ids]})` | saves documents first; `restore_snapshot` undoes |
-| `ctx.bridge.send(command, params)` | companion module commands (`search_compendium_content`, `get_compendium_document`, …); `call_module_api` `{module, calls: [{fn, args}]}` (module 0.6.5+) calls another active module's `game.modules.get(module).api` in the GM browser, `{"$uuid": "Actor.x"}` in args becomes the document |
+| `ctx.bridge.send(command, params)` | companion module commands (`search_compendium_content`, `get_compendium_document`, …); `call_module_api` `{module, calls: [{fn, args}]}` (module 0.6.5+) calls another active module's `game.modules.get(module).api` in the GM browser, `{"$uuid": "Actor.x"}` in args becomes the document; `set_settings` `{values: {"module.key": v}}` (0.6.6+) sets other modules' settings of any scope in that browser and returns `{previous}` to put back |
 | `ctx.setting(key)` | `FOUNDRY_ADDON_<NAME>_<KEY>` (connector configuration) |
 | `ctx.worldSetting(key)` | one of the addon's `worldSettings`, as set in this world (else its default) |
 | `ctx.text(t)`, `ctx.fail(message)` | a text result; an invalid-params error the AI can act on |

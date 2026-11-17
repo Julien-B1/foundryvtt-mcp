@@ -15,6 +15,7 @@ import { renderScene } from './commands/render-scene.js';
 import { traceWalls } from './commands/trace-walls.js';
 import { exportAdventure, importAdventure } from './commands/adventure.js';
 import { callModuleApi } from './commands/call-module-api.js';
+import { setSettings } from './commands/set-settings.js';
 
 const MODULE_ID = 'foundryvtt-mcp-bridge';
 
@@ -37,6 +38,7 @@ const COMMANDS = {
   export_adventure: (params) => exportAdventure(params),
   import_adventure: (params) => importAdventure(params),
   call_module_api: (params) => callModuleApi(params),
+  set_settings: (params) => setSettings(params),
 };
 
 /** @type {BridgeTransport | null} */
